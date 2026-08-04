@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meriti</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f7f8fa; color: #111827; font-family: 'Plus Jakarta Sans', sans-serif; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    #root { min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #00C2AD; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const SUPABASE_URL = "https://zuuintnjucfptemiqnoa.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dWludG5qdWNmcHRlbWlxbm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3Nzc1NjIsImV4cCI6MjEwMTM1MzU2Mn0.p5pxg9b6Ll4DXPEUDxfa-w2Etz-s-otI6R7BYKYupVo";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const DEFAULT_CATALOG = [
+      { label: "Curso publicado en fecha", pts: 10, icon: "🎓" },
+      { label: "Colaboración con otro departamento", pts: 4, icon: "🤝" },
+      { label: "Propuesta de mejora", pts: 5, icon: "💡" },
+      { label: "Control de Calidad", pts: 1, icon: "✅" },
+      { label: "Entrega antes de tiempo", pts: 3, icon: "⚡" },
+      { label: "Resolución de incidencia", pts: 1, icon: "🔧" },
+    ];
+
+    const BRAND_COLORS = ["#00C2AD","#00DD99","#FFCF2B","#6BF279","#0096AD","#99F999"];
+    const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    const isLastDay = now.getDate() === lastDayOfMonth;
+
+    // ── STYLES ──────────────────────────────────────────────────────────────
+    const C = {
+      teal: "#00C2AD", green: "#00DD99", yellow: "#FFCF2B",
+      mint: "#6BF279", blue: "#0096AD", cream: "#F2F2E7",
+      dark: "#091E05", text: "#111827", muted: "#6B7280",
+      bg: "#f7f8fa", card: "#ffffff", border: "#E5E7EB",
+    };
+
+    const S = {
+      // Layout
+      app: { minHeight: "100vh", background: C.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" },
+      sidebar: { width: "240px", minHeight: "100vh", background: "#ffffff", borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 50 },
+      mainContent: { marginLeft: "240px", minHeight: "100vh", display: "flex", flexDirection: "column" },
+      topbar: { height: "64px", background: "#ffffff", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", position: "sticky", top: 0, zIndex: 40 },
+      page: { padding: "32px", maxWidth: "1100px", animation: "fadeIn 0.3s ease" },
+
+      // Cards
+      card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "24px", marginBottom: "20px" },
+      cardSm: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "10px", padding: "16px" },
+      statCard: (color) => ({ background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "20px 24px", borderLeft: `4px solid ${color}` }),
+
+      // Typography
+      pageTitle: { fontSize: "24px", fontWeight: "800", color: C.text, marginBottom: "4px" },
+      pageSubtitle: { fontSize: "14px", color: C.muted, marginBottom: "28px" },
+      sectionLabel: { fontSize: "11px", fontWeight: "700", letterSpacing: "1.5px", color: C.muted, textTransform: "uppercase", marginBottom: "12px" },
+      cardTitle: { fontSize: "15px", fontWeight: "700", color: C.text, marginBottom: "4px" },
+
+      // Form
+      label: { fontSize: "13px", fontWeight: "600", color: C.text, marginBottom: "6px", display: "block" },
+      input: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "border-color 0.2s" },
+      select: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+      textarea: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif", resize: "vertical", minHeight: "80px" },
+
+      // Buttons
+      btnPrimary: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+      btnSecondary: { padding: "10px 20px", borderRadius: "8px", border: `1.5px solid ${C.border}`, cursor: "pointer", background: "#fff", color: C.text, fontWeight: "600", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+      btnDanger: { padding: "8px 14px", borderRadius: "7px", border: "none", cursor: "pointer", background: "#FEE2E2", color: "#DC2626", fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+      btnGhost: (color) => ({ padding: "7px 13px", borderRadius: "7px", border: "none", cursor: "pointer", background: `${color}15`, color: color, fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" }),
+      btnYellow: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.yellow, color: C.dark, fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+
+      // Table
+      th: { textAlign: "left", padding: "10px 16px", fontSize: "12px", fontWeight: "700", color: C.muted, letterSpacing: "0.5px", borderBottom: `1px solid ${C.border}`, background: "#F9FAFB" },
+      td: { padding: "12px 16px", fontSize: "13px", color: C.text, borderBottom: `1px solid ${C.border}` },
+
+      // Badges
+      badge: (color, bg) => ({ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", color, background: bg }),
+
+      // Overlays
+      overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" },
+      modal: { background: "#fff", borderRadius: "16px", padding: "32px", width: "90%", maxWidth: "480px", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", animation: "fadeIn 0.2s ease" },
+
+      // Login
+      loginWrap: { minHeight: "100vh", background: `linear-gradient(135deg, #061a0e 0%, #0a2015 50%, #063318 100%)`, display: "flex", alignItems: "center", justifyContent: "center" },
+      loginCard: { background: "#fff", borderRadius: "20px", padding: "48px", width: "100%", maxWidth: "420px", boxShadow: "0 24px 80px rgba(0,0,0,0.3)" },
+
+      spinner: { display: "inline-block", width: "20px", height: "20px", border: `2px solid ${C.border}`, borderTop: `2px solid ${C.teal}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" },
+    };
+
+    // ── NAV ITEM ─────────────────────────────────────────────────────────────
+    function NavItem({ icon, label, active, onClick, badge }) {
+      return (
+        <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", border: "none", cursor: "pointer", width: "100%", textAlign: "left", background: active ? `${C.teal}15` : "transparent", color: active ? C.teal : C.muted, fontWeight: active ? "700" : "500", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "all 0.15s", position: "relative" }}>
+          <span style={{ fontSize: "16px" }}>{icon}</span>
+          <span>{label}</span>
+          {badge > 0 && <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: "10px", fontSize: "11px", fontWeight: "700", padding: "1px 7px" }}>{badge}</span>}
+        </button>
+      );
+    }
+
+    // ── MAIN APP ─────────────────────────────────────────────────────────────
+    function App() {
+      const [session, setSession] = useState(null);
+      const [profile, setProfile] = useState(null);
+      const [company, setCompany] = useState(null);
+      const [loading, setLoading] = useState(true);
+      const [view, setView] = useState("dashboard");
+      const [authMode, setAuthMode] = useState("login");
+      const [authForm, setAuthForm] = useState({ email: "", password: "", name: "" });
+      const [authError, setAuthError] = useState("");
+      const [authLoading, setAuthLoading] = useState(false);
+
+      // Data
+      const [records, setRecords] = useState([]);
+      const [profiles, setProfiles] = useState([]);
+      const [history, setHistory] = useState([]);
+      const [catalog, setCatalog] = useState([]);
+      const [prizes, setPrizes] = useState([]);
+      const [departments, setDepartments] = useState([]);
+      const [notifications, setNotifications] = useState([]);
+
+      // UI state
+      const [viewingMonthIndex, setViewingMonthIndex] = useState(0);
+      const [selectedDept, setSelectedDept] = useState("all");
+      const [form, setForm] = useState({ catalogId: "", date: new Date().toISOString().split("T")[0], desc: "", deptId: "" });
+      const [formMsg, setFormMsg] = useState("");
+      const [editRecord, setEditRecord] = useState(null);
+      const [closingMonth, setClosingMonth] = useState(false);
+      const [showNotifs, setShowNotifs] = useState(false);
+
+      // Roulette
+      const [showRoulette, setShowRoulette] = useState(false);
+      const [spinning, setSpinning] = useState(false);
+      const [spinDeg, setSpinDeg] = useState(0);
+      const [wonPrize, setWonPrize] = useState(null);
+      const [currentDeg, setCurrentDeg] = useState(0);
+
+      // Admin forms
+      const [newCatalogItem, setNewCatalogItem] = useState({ label: "", pts: "", icon: "⭐" });
+      const [newPrize, setNewPrize] = useState("");
+      const [newDept, setNewDept] = useState("");
+      const [editDept, setEditDept] = useState(null);
+      const [companyForm, setCompanyForm] = useState({ name: "", logo: "" });
+      const [companyMsg, setCompanyMsg] = useState("");
+      const logoInputRef = useRef(null);
+
+      useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          setSession(session);
+          if (session) loadProfile(session.user.id);
+          else setLoading(false);
+        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
+          setSession(s);
+          if (s) loadProfile(s.user.id);
+          else { setProfile(null); setLoading(false); }
+        });
+        return () => subscription.unsubscribe();
+      }, []);
+
+      useEffect(() => {
+        if (profile) {
+          loadRecords(); loadProfiles(); loadHistory(); loadCatalog();
+          loadPrizes(); loadNotifications(); loadDepartments(); loadCompany();
+        }
+      }, [profile]);
+
+      // ── DATA LOADERS ──────────────────────────────────────────────────────
+      async function loadProfile(uid) {
+        const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
+        setProfile(data); setLoading(false);
+      }
+      async function loadRecords() {
+        const { data } = await supabase.from("records").select("*").order("created_at", { ascending: false });
+        setRecords(data || []);
+      }
+      async function loadProfiles() {
+        const { data } = await supabase.from("profiles").select("*").order("name");
+        setProfiles(data || []);
+      }
+      async function loadHistory() {
+        const { data } = await supabase.from("month_history").select("*").order("closed_at", { ascending: false });
+        setHistory(data || []);
+      }
+      async function loadCatalog() {
+        const { data } = await supabase.from("catalog_items").select("*").order("created_at");
+        if (data && data.length > 0) { setCatalog(data); }
+        else {
+          const { data: ins } = await supabase.from("catalog_items").insert(DEFAULT_CATALOG).select();
+          setCatalog(ins || DEFAULT_CATALOG);
+        }
+      }
+      async function loadPrizes() {
+        const { data } = await supabase.from("prizes").select("*").order("created_at");
+        setPrizes(data || []);
+      }
+      async function loadDepartments() {
+        const { data } = await supabase.from("departments").select("*").order("name");
+        setDepartments(data || []);
+      }
+      async function loadCompany() {
+        const { data } = await supabase.from("company_settings").select("*").limit(1).single();
+        if (data) { setCompany(data); setCompanyForm({ name: data.name || "", logo: data.logo || "" }); }
+      }
+      async function loadNotifications() {
+        if (!session) return;
+        const { data } = await supabase.from("notifications").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(20);
+        setNotifications(data || []);
+      }
+      async function markAllRead() {
+        await supabase.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false);
+        await loadNotifications();
+      }
+
+      // ── AUTH ──────────────────────────────────────────────────────────────
+      async function handleLogin() {
+        setAuthLoading(true); setAuthError("");
+        const { error } = await supabase.auth.signInWithPassword({ email: authForm.email, password: authForm.password });
+        if (error) setAuthError("Email o contraseña incorrectos.");
+        setAuthLoading(false);
+      }
+      async function handleRegister() {
+        if (!authForm.name.trim()) { setAuthError("Introduce tu nombre."); return; }
+        if (authForm.password.length < 6) { setAuthError("Mínimo 6 caracteres."); return; }
+        setAuthLoading(true); setAuthError("");
+        const { error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password, options: { data: { name: authForm.name } } });
+        if (error) setAuthError(error.message);
+        else setAuthError("✅ ¡Cuenta creada! Inicia sesión.");
+        setAuthLoading(false);
+      }
+      async function handleLogout() { await supabase.auth.signOut(); setView("dashboard"); }
+
+      // ── COMPANY ───────────────────────────────────────────────────────────
+      async function handleSaveCompany() {
+        const existing = await supabase.from("company_settings").select("id").limit(1).single();
+        if (existing.data) {
+          await supabase.from("company_settings").update({ name: companyForm.name, logo: companyForm.logo }).eq("id", existing.data.id);
+        } else {
+          await supabase.from("company_settings").insert({ name: companyForm.name, logo: companyForm.logo });
+        }
+        await loadCompany();
+        setCompanyMsg("✅ Cambios guardados.");
+        setTimeout(() => setCompanyMsg(""), 3000);
+      }
+      function handleLogoUpload(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => setCompanyForm(f => ({ ...f, logo: ev.target.result }));
+        reader.readAsDataURL(file);
+      }
+
+      // ── DEPARTMENTS ───────────────────────────────────────────────────────
+      async function handleAddDept() {
+        if (!newDept.trim()) return;
+        await supabase.from("departments").insert({ name: newDept.trim() });
+        setNewDept(""); await loadDepartments();
+      }
+      async function handleSaveEditDept() {
+        if (!editDept?.name.trim()) return;
+        await supabase.from("departments").update({ name: editDept.name }).eq("id", editDept.id);
+        setEditDept(null); await loadDepartments();
+      }
+      async function handleDeleteDept(id) {
+        await supabase.from("departments").delete().eq("id", id);
+        await loadDepartments();
+      }
+
+      // ── CATALOG ───────────────────────────────────────────────────────────
+      async function handleAddCatalogItem() {
+        if (!newCatalogItem.label.trim() || !newCatalogItem.pts) return;
+        await supabase.from("catalog_items").insert({ label: newCatalogItem.label.trim(), pts: parseInt(newCatalogItem.pts), icon: newCatalogItem.icon || "⭐" });
+        setNewCatalogItem({ label: "", pts: "", icon: "⭐" }); await loadCatalog();
+      }
+      async function handleDeleteCatalogItem(id) {
+        await supabase.from("catalog_items").delete().eq("id", id); await loadCatalog();
+      }
+
+      // ── PRIZES ────────────────────────────────────────────────────────────
+      async function handleAddPrize() {
+        if (!newPrize.trim()) return;
+        await supabase.from("prizes").insert({ label: newPrize.trim() });
+        setNewPrize(""); await loadPrizes();
+      }
+      async function handleDeletePrize(id) {
+        await supabase.from("prizes").delete().eq("id", id); await loadPrizes();
+      }
+
+      // ── RECORDS ───────────────────────────────────────────────────────────
+      async function handleSubmit() {
+        if (!form.catalogId || !form.date || !form.desc.trim()) { setFormMsg("⚠️ Completa todos los campos."); return; }
+        const cat = catalog.find(c => c.id === form.catalogId);
+        if (!cat) { setFormMsg("⚠️ Selecciona un item válido."); return; }
+        const { error } = await supabase.from("records").insert({ user_id: session.user.id, user_name: profile.name, catalog_id: cat.id, pts: cat.pts, description: form.desc, date: form.date, month: monthKey, validated: false, dept_id: form.deptId || null });
+        if (error) { setFormMsg("❌ Error: " + error.message); return; }
+        await loadRecords();
+        setForm({ catalogId: "", date: new Date().toISOString().split("T")[0], desc: "", deptId: "" });
+        setFormMsg("✅ Logro enviado. Amanda lo validará pronto.");
+        setTimeout(() => setFormMsg(""), 5000);
+      }
+      async function handleValidate(id) {
+        await supabase.from("records").update({ validated: true }).eq("id", id);
+        const rec = records.find(r => r.id === id);
+        if (rec) await supabase.from("notifications").insert({ user_id: rec.user_id, message: `✅ Tu logro "${rec.description}" ha sido validado — +${rec.pts} pts`, read: false });
+        await loadRecords();
+      }
+      async function handleDelete(id) { await supabase.from("records").delete().eq("id", id); await loadRecords(); }
+      async function handleSaveEdit() {
+        const cat = catalog.find(c => c.id === editRecord.catalog_id);
+        await supabase.from("records").update({ catalog_id: editRecord.catalog_id, pts: cat ? cat.pts : editRecord.pts, description: editRecord.description, date: editRecord.date }).eq("id", editRecord.id);
+        await loadRecords(); setEditRecord(null);
+      }
+      async function handleUpdateRole(uid, role) { await supabase.from("profiles").update({ role }).eq("id", uid); await loadProfiles(); }
+      async function handleUpdateDeptForUser(uid, deptId) { await supabase.from("profiles").update({ dept_id: deptId }).eq("id", uid); await loadProfiles(); }
+      async function handleCloseMonth() {
+        const mRecs = records.filter(r => r.month === monthKey && r.validated);
+        const scores = profiles.filter(p => p.role === "user").map(p => ({ name: p.name, pts: mRecs.filter(r => r.user_id === p.id).reduce((a, b) => a + b.pts, 0) })).sort((a, b) => b.pts - a.pts);
+        await supabase.from("month_history").insert({ month: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, winner: scores[0]?.name || "—", scores });
+        await loadHistory(); setClosingMonth(false); setView("dashboard");
+      }
+
+      // ── ROULETTE ──────────────────────────────────────────────────────────
+      function handleSpin() {
+        if (spinning || prizes.length === 0) return;
+        setWonPrize(null); setSpinning(true);
+        const randomSlice = Math.floor(Math.random() * prizes.length);
+        const sliceDeg = 360 / prizes.length;
+        const targetDeg = currentDeg + (5 + Math.floor(Math.random() * 5)) * 360 + (360 - randomSlice * sliceDeg - sliceDeg / 2);
+        setSpinDeg(targetDeg); setCurrentDeg(targetDeg % 360);
+        setTimeout(() => { setSpinning(false); setWonPrize(prizes[randomSlice]); }, 4500);
+      }
+
+      // ── COMPUTED ──────────────────────────────────────────────────────────
+      const teamProfiles = profiles.filter(p => p.role === "user");
+      const allNames = teamProfiles.map(p => p.name);
+      const getColor = (name) => BRAND_COLORS[([...allNames].sort().indexOf(name)) % BRAND_COLORS.length] || C.teal;
+
+      const filteredProfiles = selectedDept === "all" ? teamProfiles : teamProfiles.filter(p => p.dept_id === selectedDept);
+      const currentPoints = filteredProfiles.map(p => ({ ...p, pts: records.filter(r => r.user_id === p.id && r.month === monthKey && r.validated).reduce((a, b) => a + b.pts, 0) })).sort((a, b) => b.pts - a.pts);
+      const maxPts = Math.max(...currentPoints.map(u => u.pts), 1);
+      const winner = currentPoints[0];
+
+      const allMonths = [
+        { key: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, isCurrent: true },
+        ...history.map(h => ({ key: h.month, label: h.label, isCurrent: false, histData: h }))
+      ];
+      const cmd = allMonths[viewingMonthIndex] || allMonths[0];
+      const isCurrent = cmd.isCurrent;
+      let dPoints = [], dRecords = [];
+      if (isCurrent) {
+        dPoints = currentPoints;
+        dRecords = records.filter(r => r.month === monthKey && (selectedDept === "all" || r.dept_id === selectedDept)).slice(0, 10);
+      } else {
+        dPoints = (cmd.histData?.scores || []).sort((a, b) => b.pts - a.pts);
+        dRecords = records.filter(r => r.month === cmd.histData?.month);
+      }
+      const dMax = Math.max(...dPoints.map(u => u.pts), 1);
+
+      const visibleRecords = profile?.role === "admin" ? records : records.filter(r => r.user_id === session?.user?.id);
+      const unreadCount = notifications.filter(n => !n.read).length;
+      const pendingCount = records.filter(r => !r.validated).length;
+
+      const companyName = company?.name || "Meriti";
+      const companyLogo = company?.logo || null;
+
+      // ── LOADING / AUTH ────────────────────────────────────────────────────
+      if (loading) return (
+        <div style={S.loginWrap}><div style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "48px", marginBottom: "20px" }}>🏆</div>
+          <div style={S.spinner} />
+          <div style={{ marginTop: "16px", color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>Cargando...</div>
+        </div></div>
+      );
+
+      if (!session || !profile) return (
+        <div style={S.loginWrap}>
+          <div style={S.loginCard}>
+            <div style={{ textAlign: "center", marginBottom: "36px" }}>
+              <div style={{ fontSize: "44px", marginBottom: "12px" }}>🏆</div>
+              <div style={{ fontSize: "28px", fontWeight: "900", color: C.dark, marginBottom: "6px" }}>Meriti</div>
+              <div style={{ fontSize: "14px", color: C.muted }}>Gamificación para equipos de trabajo</div>
+            </div>
+            <div style={{ display: "flex", marginBottom: "24px", background: "#F3F4F6", borderRadius: "10px", padding: "4px" }}>
+              {["login","register"].map(m => (
+                <button key={m} style={{ flex: 1, padding: "9px", borderRadius: "8px", border: "none", cursor: "pointer", fontWeight: "700", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif", background: authMode === m ? "#fff" : "transparent", color: authMode === m ? C.text : C.muted, boxShadow: authMode === m ? "0 1px 4px rgba(0,0,0,0.1)" : "none" }} onClick={() => { setAuthMode(m); setAuthError(""); }}>
+                  {m === "login" ? "Iniciar sesión" : "Registrarse"}
+                </button>
+              ))}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {authMode === "register" && <div><label style={S.label}>Nombre</label><input style={S.input} placeholder="Tu nombre completo" value={authForm.name} onChange={e => setAuthForm(f => ({ ...f, name: e.target.value }))} /></div>}
+              <div><label style={S.label}>Email</label><input style={S.input} type="email" placeholder="tu@empresa.com" value={authForm.email} onChange={e => setAuthForm(f => ({ ...f, email: e.target.value }))} /></div>
+              <div><label style={S.label}>Contraseña</label><input style={S.input} type="password" placeholder="Mínimo 6 caracteres" value={authForm.password} onChange={e => setAuthForm(f => ({ ...f, password: e.target.value }))} onKeyDown={e => e.key === "Enter" && (authMode === "login" ? handleLogin() : handleRegister())} /></div>
+              {authError && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: authError.startsWith("✅") ? "#D1FAE5" : "#FEE2E2", color: authError.startsWith("✅") ? "#065F46" : "#DC2626" }}>{authError}</div>}
+              <button style={{ ...S.btnPrimary, width: "100%", padding: "12px", fontSize: "15px", opacity: authLoading ? 0.7 : 1 }} onClick={authMode === "login" ? handleLogin : handleRegister} disabled={authLoading}>
+                {authLoading ? "Cargando..." : authMode === "login" ? "Entrar" : "Crear cuenta"}
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+
+      // ── MAIN LAYOUT ───────────────────────────────────────────────────────
+      return (
+        <div style={S.app}>
+          {/* SIDEBAR */}
+          <aside style={S.sidebar}>
+            <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                {companyLogo ? <img src={companyLogo} alt="logo" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} /> : <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏆</div>}
+                <div>
+                  <div style={{ fontSize: "15px", fontWeight: "800", color: C.text, lineHeight: 1.2 }}>{companyName}</div>
+                  <div style={{ fontSize: "11px", color: C.muted }}>powered by Meriti</div>
+                </div>
+              </div>
+            </div>
+
+            <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
+              <div style={S.sectionLabel} className="px-2">Principal</div>
+              <NavItem icon="📊" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
+              {profile.role !== "admin" && <NavItem icon="➕" label="Registrar logro" active={view === "registrar"} onClick={() => setView("registrar")} />}
+              <NavItem icon="📋" label="Historial" active={view === "historial"} onClick={() => setView("historial")} />
+              {(profile.role === "admin" || (winner && winner.id === profile.id)) && (
+                <NavItem icon="🎡" label="Ruleta" active={view === "ruleta"} onClick={() => setView("ruleta")} />
+              )}
+              {profile.role === "admin" && (
+                <>
+                  <div style={{ ...S.sectionLabel, marginTop: "16px" }}>Administración</div>
+                  <NavItem icon="✅" label="Validar logros" active={view === "validar"} onClick={() => setView("validar")} badge={pendingCount} />
+                  <NavItem icon="👥" label="Equipo" active={view === "equipo"} onClick={() => setView("equipo")} />
+                  <NavItem icon="🏢" label="Departamentos" active={view === "departamentos"} onClick={() => setView("departamentos")} />
+                  <NavItem icon="📝" label="Catálogo" active={view === "catalogo"} onClick={() => setView("catalogo")} />
+                  <NavItem icon="⚙️" label="Empresa" active={view === "empresa"} onClick={() => setView("empresa")} />
+                </>
+              )}
+            </nav>
+
+            <div style={{ padding: "12px 8px", borderTop: `1px solid ${C.border}` }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "8px", background: "#F9FAFB" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "13px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "13px", fontWeight: "700", color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
+                  <div style={{ fontSize: "11px", color: C.muted }}>{profile.role === "admin" ? "Manager" : "Empleado"}</div>
+                </div>
+                <button onClick={handleLogout} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "16px", padding: "2px" }}>↩</button>
+              </div>
+            </div>
+          </aside>
+
+          {/* MAIN */}
+          <div style={S.mainContent}>
+            {/* TOPBAR */}
+            <header style={S.topbar}>
+              <div style={{ fontSize: "15px", fontWeight: "700", color: C.text }}>
+                {view === "dashboard" && "Dashboard"}
+                {view === "registrar" && "Registrar logro"}
+                {view === "historial" && "Historial"}
+                {view === "ruleta" && "Ruleta de premios"}
+                {view === "validar" && "Validar logros"}
+                {view === "equipo" && "Gestión del equipo"}
+                {view === "departamentos" && "Departamentos"}
+                {view === "catalogo" && "Catálogo de logros"}
+                {view === "empresa" && "Configuración de empresa"}
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                {profile.role !== "admin" && (
+                  <div style={{ position: "relative" }}>
+                    <button onClick={() => { setShowNotifs(!showNotifs); if (!showNotifs) markAllRead(); }} style={{ background: "#F3F4F6", border: "none", cursor: "pointer", borderRadius: "8px", padding: "8px 10px", fontSize: "16px", position: "relative" }}>
+                      🔔
+                      {unreadCount > 0 && <span style={{ position: "absolute", top: "4px", right: "4px", background: "#EF4444", color: "#fff", borderRadius: "50%", width: "14px", height: "14px", fontSize: "9px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center" }}>{unreadCount}</span>}
+                    </button>
+                    {showNotifs && (
+                      <div style={{ position: "absolute", right: 0, top: "44px", width: "320px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "12px", zIndex: 300, boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
+                        <div style={S.sectionLabel}>Notificaciones</div>
+                        {notifications.length === 0 ? <div style={{ color: C.muted, fontSize: "13px", textAlign: "center", padding: "16px 0" }}>Sin notificaciones</div>
+                          : notifications.map(n => <div key={n.id} style={{ padding: "10px 12px", borderRadius: "8px", marginBottom: "6px", background: n.read ? "#F9FAFB" : `${C.teal}10`, border: `1px solid ${n.read ? C.border : C.teal}30`, fontSize: "13px", color: n.read ? C.muted : C.text }}>{n.message}</div>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div style={{ fontSize: "13px", color: C.muted }}>{MONTH_NAMES[now.getMonth()]} {now.getFullYear()}</div>
+              </div>
+            </header>
+
+            <div style={S.page}>
+
+              {/* ── DASHBOARD ── */}
+              {view === "dashboard" && (
+                <>
+                  {/* Month navigation */}
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+                    <button onClick={() => setViewingMonthIndex(i => Math.min(i + 1, allMonths.length - 1))} disabled={viewingMonthIndex >= allMonths.length - 1}
+                      style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex >= allMonths.length - 1 ? 0.3 : 1 }}>← Anterior</button>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={S.pageTitle}>{cmd.label}</div>
+                      <div style={{ fontSize: "13px", color: C.muted }}>{isCurrent ? `${records.filter(r => r.month === monthKey && r.validated).length} logros validados` : `Mes cerrado · 🥇 ${cmd.histData?.winner}`}</div>
+                    </div>
+                    <button onClick={() => setViewingMonthIndex(i => Math.max(i - 1, 0))} disabled={viewingMonthIndex === 0}
+                      style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex === 0 ? 0.3 : 1 }}>Siguiente →</button>
+                  </div>
+
+                  {/* Department filter */}
+                  {isCurrent && departments.length > 0 && (
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
+                      <button onClick={() => setSelectedDept("all")} style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${selectedDept === "all" ? C.teal : C.border}`, background: selectedDept === "all" ? `${C.teal}15` : "#fff", color: selectedDept === "all" ? C.teal : C.muted, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Todos</button>
+                      {departments.map(d => <button key={d.id} onClick={() => setSelectedDept(d.id)} style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${selectedDept === d.id ? C.teal : C.border}`, background: selectedDept === d.id ? `${C.teal}15` : "#fff", color: selectedDept === d.id ? C.teal : C.muted, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{d.name}</button>)}
+                    </div>
+                  )}
+
+                  {/* Last day banner */}
+                  {isCurrent && isLastDay && winner && profile.role === "admin" && (
+                    <div style={{ background: `linear-gradient(135deg, ${C.yellow}20, ${C.yellow}08)`, border: `1px solid ${C.yellow}50`, borderRadius: "12px", padding: "16px 20px", display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
+                      <span style={{ fontSize: "28px" }}>🥇</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: "700", fontSize: "15px" }}>¡Último día del mes!</div>
+                        <div style={{ color: C.muted, fontSize: "13px" }}>Ganador: <strong style={{ color: C.dark }}>{winner.name}</strong> con {winner.pts} pts</div>
+                      </div>
+                      <button style={S.btnYellow} onClick={() => setClosingMonth(true)}>Cerrar mes →</button>
+                    </div>
+                  )}
+
+                  {/* Leaderboard */}
+                  <div style={S.card}>
+                    <div style={S.sectionLabel}>Clasificación</div>
+                    {dPoints.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "40px 0", color: C.muted }}>
+                        <div style={{ fontSize: "32px", marginBottom: "8px" }}>🏁</div>
+                        <div>Aún no hay puntos este mes</div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {dPoints.map((u, i) => {
+                          const color = getColor(u.name);
+                          return (
+                            <div key={u.id || u.name} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderRadius: "10px", background: i === 0 ? `${color}10` : "#F9FAFB", border: `1px solid ${i === 0 ? color + "30" : C.border}` }}>
+                              <div style={{ width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: i === 0 ? "linear-gradient(135deg, #FFD700, #FFA500)" : i === 1 ? "linear-gradient(135deg, #C0C0C0, #888)" : "linear-gradient(135deg, #CD7F32, #8B4513)", fontSize: "16px", flexShrink: 0 }}>
+                                {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
+                              </div>
+                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "14px", color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "5px" }}>{u.name}
+                                  {departments.find(d => d.id === u.dept_id) && <span style={{ marginLeft: "8px", ...S.badge(C.teal, `${C.teal}15`) }}>{departments.find(d => d.id === u.dept_id)?.name}</span>}
+                                </div>
+                                <div style={{ height: "5px", borderRadius: "3px", background: `${color}30`, overflow: "hidden" }}>
+                                  <div style={{ height: "100%", width: `${Math.max((u.pts / dMax) * 100, 3)}%`, background: color, borderRadius: "3px", transition: "width 0.8s ease" }} />
+                                </div>
+                              </div>
+                              <div style={{ fontSize: "22px", fontWeight: "900", color, flexShrink: 0 }}>{u.pts}<span style={{ fontSize: "12px", color: C.muted, fontWeight: "500" }}> pts</span></div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Recent records */}
+                  <div style={S.card}>
+                    <div style={S.sectionLabel}>{isCurrent ? "Últimos logros" : "Logros del mes"}</div>
+                    {dRecords.length === 0 ? <div style={{ color: C.muted, textAlign: "center", padding: "24px 0", fontSize: "14px" }}>Sin logros registrados</div> : (
+                      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                        <thead><tr><th style={S.th}>Persona</th><th style={S.th}>Logro</th><th style={S.th}>Descripción</th><th style={S.th}>Pts</th><th style={S.th}>Estado</th></tr></thead>
+                        <tbody>
+                          {dRecords.map(r => {
+                            const cat = catalog.find(c => c.id === r.catalog_id);
+                            const color = getColor(r.user_name);
+                            return (
+                              <tr key={r.id}>
+                                <td style={S.td}><span style={{ fontWeight: "700", color }}>{r.user_name}</span></td>
+                                <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                                <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
+                                <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
+                                <td style={S.td}>{r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ── REGISTRAR ── */}
+              {view === "registrar" && profile.role !== "admin" && (
+                <div style={{ maxWidth: "560px" }}>
+                  <div style={S.pageTitle}>Nuevo logro</div>
+                  <div style={S.pageSubtitle}>Registra lo que has conseguido hoy</div>
+                  <div style={S.card}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
+                      <div><label style={S.label}>¿Qué has conseguido?</label>
+                        <select style={S.select} value={form.catalogId} onChange={e => setForm(f => ({ ...f, catalogId: e.target.value }))}>
+                          <option value="">Selecciona un item...</option>
+                          {catalog.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label} — {c.pts} pts</option>)}
+                        </select>
+                      </div>
+                      {departments.length > 0 && (
+                        <div><label style={S.label}>Departamento</label>
+                          <select style={S.select} value={form.deptId} onChange={e => setForm(f => ({ ...f, deptId: e.target.value }))}>
+                            <option value="">Sin departamento</option>
+                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                      <div><label style={S.label}>Fecha</label><input style={S.input} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+                      <div><label style={S.label}>Descripción</label><input style={S.input} type="text" placeholder="Describe brevemente tu logro..." value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} /></div>
+                      {form.catalogId && (
+                        <div style={{ padding: "12px 16px", borderRadius: "8px", background: `${C.teal}10`, border: `1px solid ${C.teal}30` }}>
+                          <span style={{ color: C.teal, fontWeight: "700" }}>+{catalog.find(c => c.id === form.catalogId)?.pts} puntos</span>
+                          <span style={{ color: C.muted, fontSize: "13px" }}> · pendiente de validación</span>
+                        </div>
+                      )}
+                      {formMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: formMsg.startsWith("✅") ? "#D1FAE5" : "#FEF3C7", color: formMsg.startsWith("✅") ? "#065F46" : "#92400E" }}>{formMsg}</div>}
+                      <button style={S.btnPrimary} onClick={handleSubmit}>Enviar logro →</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── HISTORIAL ── */}
+              {view === "historial" && (
+                <>
+                  <div style={S.pageTitle}>Historial</div>
+                  <div style={S.pageSubtitle}>Todos los logros registrados</div>
+                  <div style={S.card}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr>
+                        {profile.role === "admin" && <th style={S.th}>Persona</th>}
+                        <th style={S.th}>Logro</th><th style={S.th}>Descripción</th><th style={S.th}>Fecha</th><th style={S.th}>Pts</th><th style={S.th}>Estado</th>
+                      </tr></thead>
+                      <tbody>
+                        {visibleRecords.map(r => {
+                          const cat = catalog.find(c => c.id === r.catalog_id);
+                          const color = getColor(r.user_name);
+                          return (
+                            <tr key={r.id}>
+                              {profile.role === "admin" && <td style={{ ...S.td, fontWeight: "700", color }}>{r.user_name}</td>}
+                              <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                              <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
+                              <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
+                              <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
+                              <td style={S.td}>{r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}</td>
+                            </tr>
+                          );
+                        })}
+                        {visibleRecords.length === 0 && <tr><td colSpan="6" style={{ ...S.td, textAlign: "center", color: C.muted, padding: "32px" }}>Sin registros aún</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                  {history.length > 0 && (
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Meses cerrados</div>
+                      {history.map((h, i) => (
+                        <div key={i} style={{ padding: "14px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}`, marginBottom: "10px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                            <div style={{ fontWeight: "700" }}>{h.label}</div>
+                            <span style={S.badge("#D97706","#FEF3C7")}>🥇 {h.winner}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                            {(h.scores || []).map(s => <div key={s.name} style={{ fontSize: "13px" }}><span style={{ color: getColor(s.name), fontWeight: "600" }}>{s.name}</span><span style={{ color: C.muted }}> · {s.pts} pts</span></div>)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── RULETA ── */}
+              {view === "ruleta" && (
+                <div style={{ maxWidth: "600px" }}>
+                  <div style={S.pageTitle}>Ruleta de premios</div>
+                  <div style={S.pageSubtitle}>{winner ? `¡Felicidades ${winner.name}! Gira para descubrir tu premio 🎉` : "Solo el ganador del mes puede girar"}</div>
+                  <div style={S.card}>
+                    {prizes.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "48px 0", color: C.muted }}>
+                        <div style={{ fontSize: "40px", marginBottom: "12px" }}>🎡</div>
+                        <div style={{ fontWeight: "600" }}>No hay premios configurados</div>
+                        <div style={{ fontSize: "13px", marginTop: "4px" }}>El manager puede añadirlos en Configuración</div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
+                        <div style={{ position: "relative", width: "400px", height: "400px" }}>
+                          <div style={{ position: "absolute", top: "-16px", left: "50%", transform: "translateX(-50%)", zIndex: 10, fontSize: "32px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>▼</div>
+                          <svg width="400" height="400" viewBox="0 0 400 400" style={{ transform: `rotate(${spinDeg}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none", filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.15))", borderRadius: "50%" }}>
+                            {(() => {
+                              const n = prizes.length, cx = 200, cy = 200, r = 195;
+                              const toRad = d => d * Math.PI / 180;
+                              const sliceDeg = 360 / n;
+                              return prizes.map((p, i) => {
+                                const sa = i * sliceDeg - 90, ea = sa + sliceDeg;
+                                const x1 = cx + r * Math.cos(toRad(sa)), y1 = cy + r * Math.sin(toRad(sa));
+                                const x2 = cx + r * Math.cos(toRad(ea)), y2 = cy + r * Math.sin(toRad(ea));
+                                const path = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${sliceDeg > 180 ? 1 : 0},1 ${x2},${y2} Z`;
+                                const mid = sa + sliceDeg / 2;
+                                // Text along the radius, nicely centered
+                                const textR = r * 0.58;
+                                const tx = cx + textR * Math.cos(toRad(mid));
+                                const ty = cy + textR * Math.sin(toRad(mid));
+                                const color = BRAND_COLORS[i % BRAND_COLORS.length];
+                                // Split label into words for multi-line
+                                const words = p.label.split(" ");
+                                const maxW = n <= 4 ? 3 : n <= 6 ? 2 : 2;
+                                const lines = [];
+                                for (let w = 0; w < words.length; w += maxW) lines.push(words.slice(w, w + maxW).join(" "));
+                                const fs = n <= 4 ? 14 : n <= 6 ? 12 : 10;
+                                const lh = fs * 1.4;
+                                return (
+                                  <g key={p.id}>
+                                    <path d={path} fill={color} stroke="#fff" strokeWidth="2" />
+                                    <g transform={`translate(${tx},${ty}) rotate(${mid + 90})`}>
+                                      {lines.slice(0, 3).map((line, li) => (
+                                        <text key={li} x={0} y={(li - (Math.min(lines.length, 3) - 1) / 2) * lh} textAnchor="middle" dominantBaseline="central" fill="#fff" fontWeight="700" fontSize={fs} fontFamily="Plus Jakarta Sans, sans-serif" style={{ pointerEvents: "none", textShadow: "0 1px 2px rgba(0,0,0,0.4)" }}>{line}</text>
+                                      ))}
+                                    </g>
+                                  </g>
+                                );
+                              });
+                            })()}
+                            <circle cx="200" cy="200" r="195" fill="none" stroke="#fff" strokeWidth="3" />
+                            <circle cx="200" cy="200" r="24" fill="#fff" stroke={C.teal} strokeWidth="3" />
+                            <text x="200" y="200" textAnchor="middle" dominantBaseline="central" fill={C.teal} fontWeight="900" fontSize="14" fontFamily="Plus Jakarta Sans, sans-serif">★</text>
+                          </svg>
+                        </div>
+
+                        {wonPrize && (
+                          <div style={{ padding: "20px 28px", borderRadius: "12px", background: `linear-gradient(135deg, ${C.yellow}20, ${C.green}10)`, border: `1px solid ${C.yellow}50`, textAlign: "center", width: "100%" }}>
+                            <div style={{ fontSize: "32px", marginBottom: "6px" }}>🎊</div>
+                            <div style={{ fontWeight: "900", fontSize: "20px", color: C.dark }}>¡Premio ganado!</div>
+                            <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "4px", color: C.text }}>{wonPrize.label}</div>
+                          </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: "10px" }}>
+                          {!spinning && <button style={S.btnPrimary} onClick={handleSpin}>{wonPrize ? "🔄 Girar de nuevo" : "🎡 ¡Girar!"}</button>}
+                          {spinning && <div style={{ color: C.muted, padding: "10px 20px" }}>Girando... 🌀</div>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {profile.role === "admin" && (
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Premios disponibles</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+                        {prizes.map((p, i) => (
+                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                            <span style={{ fontSize: "14px", fontWeight: "600" }}>🎁 {p.label}</span>
+                            <button style={S.btnDanger} onClick={() => handleDeletePrize(p.id)}>Eliminar</button>
+                          </div>
+                        ))}
+                        {prizes.length === 0 && <div style={{ color: C.muted, fontSize: "13px" }}>Sin premios aún</div>}
+                      </div>
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <input style={{ ...S.input, flex: 1 }} placeholder="Nuevo premio (ej: Tarde libre 🌟)" value={newPrize} onChange={e => setNewPrize(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddPrize()} />
+                        <button style={S.btnPrimary} onClick={handleAddPrize}>Añadir</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── VALIDAR ── */}
+              {view === "validar" && profile.role === "admin" && (
+                <>
+                  <div style={S.pageTitle}>Validar logros</div>
+                  <div style={S.pageSubtitle}>{pendingCount} logros pendientes de validación</div>
+                  <div style={S.card}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr><th style={S.th}>Persona</th><th style={S.th}>Logro</th><th style={S.th}>Descripción</th><th style={S.th}>Fecha</th><th style={S.th}>Pts</th><th style={S.th}>Estado</th><th style={S.th}>Acciones</th></tr></thead>
+                      <tbody>
+                        {records.map(r => {
+                          const cat = catalog.find(c => c.id === r.catalog_id);
+                          const color = getColor(r.user_name);
+                          return (
+                            <tr key={r.id}>
+                              <td style={{ ...S.td, fontWeight: "700", color }}>{r.user_name}</td>
+                              <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                              <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
+                              <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
+                              <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
+                              <td style={S.td}>{r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}</td>
+                              <td style={{ ...S.td, display: "flex", gap: "6px" }}>
+                                {!r.validated && <button style={S.btnGhost(C.teal)} onClick={() => handleValidate(r.id)}>✓ Validar</button>}
+                                <button style={S.btnGhost("#F59E0B")} onClick={() => setEditRecord({ ...r })}>✏️</button>
+                                <button style={S.btnDanger} onClick={() => handleDelete(r.id)}>🗑</button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                        {records.length === 0 && <tr><td colSpan="7" style={{ ...S.td, textAlign: "center", color: C.muted, padding: "32px" }}>Sin registros aún</td></tr>}
+                      </tbody>
+                    </table>
+                    {!isLastDay && <div style={{ marginTop: "16px", padding: "12px 16px", borderRadius: "8px", background: `${C.yellow}10`, border: `1px solid ${C.yellow}30`, fontSize: "13px", color: "#92400E" }}>⏰ El cierre de mes estará disponible el {lastDayOfMonth} de {MONTH_NAMES[now.getMonth()]}.</div>}
+                  </div>
+                </>
+              )}
+
+              {/* ── EQUIPO ── */}
+              {view === "equipo" && profile.role === "admin" && (
+                <>
+                  <div style={S.pageTitle}>Equipo</div>
+                  <div style={S.pageSubtitle}>Gestiona los miembros y sus roles</div>
+                  <div style={S.card}>
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead><tr><th style={S.th}>Nombre</th><th style={S.th}>Email</th><th style={S.th}>Departamento</th><th style={S.th}>Rol</th><th style={S.th}>Acciones</th></tr></thead>
+                      <tbody>
+                        {profiles.map(p => (
+                          <tr key={p.id}>
+                            <td style={{ ...S.td, fontWeight: "700" }}>{p.name}</td>
+                            <td style={{ ...S.td, color: C.muted, fontSize: "12px" }}>{p.email}</td>
+                            <td style={S.td}>
+                              <select style={{ ...S.select, width: "auto", fontSize: "12px", padding: "5px 10px" }} value={p.dept_id || ""} onChange={e => handleUpdateDeptForUser(p.id, e.target.value || null)}>
+                                <option value="">Sin departamento</option>
+                                {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                              </select>
+                            </td>
+                            <td style={S.td}>{p.role === "admin" ? <span style={S.badge(C.teal, `${C.teal}15`)}>Manager</span> : <span style={S.badge(C.muted, "#F3F4F6")}>Empleado</span>}</td>
+                            <td style={{ ...S.td, display: "flex", gap: "6px" }}>
+                              {p.id !== session.user.id ? (
+                                <>
+                                  {p.role !== "user" && <button style={S.btnGhost(C.teal)} onClick={() => handleUpdateRole(p.id, "user")}>→ Empleado</button>}
+                                  {p.role !== "admin" && <button style={S.btnGhost(C.yellow)} onClick={() => handleUpdateRole(p.id, "admin")}>→ Manager</button>}
+                                </>
+                              ) : <span style={{ fontSize: "12px", color: C.muted }}>Tú</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {/* ── DEPARTAMENTOS ── */}
+              {view === "departamentos" && profile.role === "admin" && (
+                <>
+                  <div style={S.pageTitle}>Departamentos</div>
+                  <div style={S.pageSubtitle}>Organiza tu equipo por áreas</div>
+                  <div style={S.card}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
+                      {departments.length === 0 && <div style={{ color: C.muted, fontSize: "14px", padding: "16px 0" }}>Sin departamentos creados aún</div>}
+                      {departments.map(d => (
+                        <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                          {editDept?.id === d.id ? (
+                            <input style={{ ...S.input, flex: 1, marginRight: "12px" }} value={editDept.name} onChange={e => setEditDept(ed => ({ ...ed, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleSaveEditDept()} autoFocus />
+                          ) : (
+                            <span style={{ fontWeight: "600", fontSize: "14px" }}>🏢 {d.name}</span>
+                          )}
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            {editDept?.id === d.id ? (
+                              <>
+                                <button style={S.btnPrimary} onClick={handleSaveEditDept}>Guardar</button>
+                                <button style={S.btnSecondary} onClick={() => setEditDept(null)}>Cancelar</button>
+                              </>
+                            ) : (
+                              <>
+                                <button style={S.btnGhost(C.teal)} onClick={() => setEditDept({ ...d })}>✏️ Editar</button>
+                                <button style={S.btnDanger} onClick={() => handleDeleteDept(d.id)}>Eliminar</button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <input style={{ ...S.input, flex: 1 }} placeholder="Nombre del departamento..." value={newDept} onChange={e => setNewDept(e.target.value)} onKeyDown={e => e.key === "Enter" && handleAddDept()} />
+                      <button style={S.btnPrimary} onClick={handleAddDept}>Crear departamento</button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── CATALOGO ── */}
+              {view === "catalogo" && profile.role === "admin" && (
+                <>
+                  <div style={S.pageTitle}>Catálogo de logros</div>
+                  <div style={S.pageSubtitle}>Define qué acciones suman puntos y cuántos</div>
+                  <div style={S.card}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
+                      {catalog.map(item => (
+                        <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                            <span style={{ fontSize: "22px" }}>{item.icon}</span>
+                            <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                            <span style={{ fontWeight: "800", color: C.teal, fontSize: "15px" }}>{item.pts} pts</span>
+                            <button style={S.btnDanger} onClick={() => handleDeleteCatalogItem(item.id)}>Eliminar</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ padding: "16px", borderRadius: "10px", background: "#F9FAFB", border: `1px dashed ${C.border}` }}>
+                      <div style={{ ...S.sectionLabel, marginBottom: "14px" }}>Añadir nuevo item</div>
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                        <input style={{ ...S.input, width: "70px" }} placeholder="🎯" value={newCatalogItem.icon} onChange={e => setNewCatalogItem(f => ({ ...f, icon: e.target.value }))} />
+                        <input style={{ ...S.input, flex: 2, minWidth: "180px" }} placeholder="Nombre del logro..." value={newCatalogItem.label} onChange={e => setNewCatalogItem(f => ({ ...f, label: e.target.value }))} />
+                        <input style={{ ...S.input, width: "90px" }} type="number" placeholder="Pts" min="1" value={newCatalogItem.pts} onChange={e => setNewCatalogItem(f => ({ ...f, pts: e.target.value }))} />
+                        <button style={S.btnPrimary} onClick={handleAddCatalogItem}>Añadir</button>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── EMPRESA ── */}
+              {view === "empresa" && profile.role === "admin" && (
+                <>
+                  <div style={S.pageTitle}>Configuración de empresa</div>
+                  <div style={S.pageSubtitle}>Personaliza la app con la identidad de tu empresa</div>
+                  <div style={{ ...S.card, maxWidth: "560px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                      <div>
+                        <label style={S.label}>Nombre de la empresa</label>
+                        <input style={S.input} placeholder="Nombre que aparecerá en el sidebar" value={companyForm.name} onChange={e => setCompanyForm(f => ({ ...f, name: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label style={S.label}>Logo</label>
+                        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                          {companyForm.logo ? <img src={companyForm.logo} alt="logo" style={{ width: "64px", height: "64px", borderRadius: "10px", objectFit: "cover", border: `1px solid ${C.border}` }} /> : <div style={{ width: "64px", height: "64px", borderRadius: "10px", background: "#F3F4F6", border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "24px" }}>🏢</div>}
+                          <div>
+                            <button style={S.btnSecondary} onClick={() => logoInputRef.current?.click()}>Subir imagen</button>
+                            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleLogoUpload} />
+                            {companyForm.logo && <button style={{ ...S.btnDanger, marginLeft: "8px" }} onClick={() => setCompanyForm(f => ({ ...f, logo: "" }))}>Eliminar</button>}
+                            <div style={{ fontSize: "12px", color: C.muted, marginTop: "6px" }}>PNG, JPG o SVG. Recomendado: 200×200px</div>
+                          </div>
+                        </div>
+                      </div>
+                      {companyMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: "#D1FAE5", color: "#065F46" }}>{companyMsg}</div>}
+                      <button style={S.btnPrimary} onClick={handleSaveCompany}>Guardar cambios</button>
+                    </div>
+                  </div>
+                </>
+              )}
+
+            </div>
+          </div>
+
+          {/* ── MODAL EDITAR ── */}
+          {editRecord && (
+            <div style={S.overlay}>
+              <div style={S.modal}>
+                <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "20px" }}>✏️ Editar logro</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div><label style={S.label}>Logro</label>
+                    <select style={S.select} value={editRecord.catalog_id} onChange={e => setEditRecord(r => ({ ...r, catalog_id: e.target.value }))}>
+                      {catalog.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label} — {c.pts} pts</option>)}
+                    </select>
+                  </div>
+                  <div><label style={S.label}>Descripción</label><input style={S.input} value={editRecord.description} onChange={e => setEditRecord(r => ({ ...r, description: e.target.value }))} /></div>
+                  <div><label style={S.label}>Fecha</label><input style={S.input} type="date" value={editRecord.date} onChange={e => setEditRecord(r => ({ ...r, date: e.target.value }))} /></div>
+                  <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "4px" }}>
+                    <button style={S.btnSecondary} onClick={() => setEditRecord(null)}>Cancelar</button>
+                    <button style={S.btnPrimary} onClick={handleSaveEdit}>Guardar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MODAL CIERRE MES ── */}
+          {closingMonth && (
+            <div style={S.overlay}>
+              <div style={{ ...S.modal, textAlign: "center" }}>
+                <div style={{ fontSize: "56px", marginBottom: "16px" }}>🏆</div>
+                <div style={{ fontWeight: "900", fontSize: "22px", marginBottom: "8px" }}>Cierre de {MONTH_NAMES[now.getMonth()]}</div>
+                <div style={{ color: C.muted, marginBottom: "8px" }}>El ganador del mes es:</div>
+                <div style={{ fontSize: "32px", fontWeight: "900", color: winner ? getColor(winner.name) : C.text, marginBottom: "4px" }}>{winner?.name || "—"}</div>
+                <div style={{ color: C.muted, marginBottom: "28px" }}>{winner?.pts || 0} puntos</div>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "center" }}>
+                  <button style={S.btnSecondary} onClick={() => setClosingMonth(false)}>Cancelar</button>
+                  <button style={S.btnYellow} onClick={handleCloseMonth}>Confirmar y cerrar mes</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>
