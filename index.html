@@ -7,7 +7,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f7f8fa; color: #111827; font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: #f7f8fa; color: #111827; font-family: 'Plus Jakarta Sans', sans-serif; transition: background 0.3s, color 0.3s; }
+    body.dark { background: #061a0e; color: #f0fdf4; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     #root { min-height: 100vh; }
@@ -20,6 +21,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
@@ -36,7 +39,15 @@
       { label: "Resolución de incidencia", pts: 1, icon: "🔧" },
     ];
 
-    const BRAND_COLORS = ["#00C2AD","#00DD99","#FFCF2B","#6BF279","#0096AD","#99F999"];
+    // BRAND_COLORS set dynamically after company loads
+    const LEVELS = [
+      { min: 0,   max: 49,  label: "Rookie",  icon: "🌱", color: "#6B7280" },
+      { min: 50,  max: 149, label: "Pro",      icon: "⚡", color: "#00C2AD" },
+      { min: 150, max: 299, label: "Experto",  icon: "💎", color: "#0096AD" },
+      { min: 300, max: Infinity, label: "Leyenda", icon: "🏆", color: "#FFCF2B" },
+    ];
+    function getLevel(totalPts) { return LEVELS.find(l => totalPts >= l.min && totalPts <= l.max) || LEVELS[0]; }
+
     const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
@@ -44,67 +55,24 @@
     const isLastDay = now.getDate() === lastDayOfMonth;
 
     // ── STYLES ──────────────────────────────────────────────────────────────
-    const C = {
+    const LIGHT = {
       teal: "#00C2AD", green: "#00DD99", yellow: "#FFCF2B",
       mint: "#6BF279", blue: "#0096AD", cream: "#F2F2E7",
       dark: "#091E05", text: "#111827", muted: "#6B7280",
       bg: "#f7f8fa", card: "#ffffff", border: "#E5E7EB",
     };
-
-    const S = {
-      // Layout
-      app: { minHeight: "100vh", background: C.bg, fontFamily: "'Plus Jakarta Sans', sans-serif" },
-      sidebar: { width: "240px", minHeight: "100vh", background: "#ffffff", borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 50 },
-      mainContent: { marginLeft: "240px", minHeight: "100vh", display: "flex", flexDirection: "column" },
-      topbar: { height: "64px", background: "#ffffff", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", position: "sticky", top: 0, zIndex: 40 },
-      page: { padding: "32px", maxWidth: "1100px", animation: "fadeIn 0.3s ease" },
-
-      // Cards
-      card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "24px", marginBottom: "20px" },
-      cardSm: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "10px", padding: "16px" },
-      statCard: (color) => ({ background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "20px 24px", borderLeft: `4px solid ${color}` }),
-
-      // Typography
-      pageTitle: { fontSize: "24px", fontWeight: "800", color: C.text, marginBottom: "4px" },
-      pageSubtitle: { fontSize: "14px", color: C.muted, marginBottom: "28px" },
-      sectionLabel: { fontSize: "11px", fontWeight: "700", letterSpacing: "1.5px", color: C.muted, textTransform: "uppercase", marginBottom: "12px" },
-      cardTitle: { fontSize: "15px", fontWeight: "700", color: C.text, marginBottom: "4px" },
-
-      // Form
-      label: { fontSize: "13px", fontWeight: "600", color: C.text, marginBottom: "6px", display: "block" },
-      input: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "border-color 0.2s" },
-      select: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-      textarea: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: "#fff", fontFamily: "'Plus Jakarta Sans', sans-serif", resize: "vertical", minHeight: "80px" },
-
-      // Buttons
-      btnPrimary: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-      btnSecondary: { padding: "10px 20px", borderRadius: "8px", border: `1.5px solid ${C.border}`, cursor: "pointer", background: "#fff", color: C.text, fontWeight: "600", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-      btnDanger: { padding: "8px 14px", borderRadius: "7px", border: "none", cursor: "pointer", background: "#FEE2E2", color: "#DC2626", fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-      btnGhost: (color) => ({ padding: "7px 13px", borderRadius: "7px", border: "none", cursor: "pointer", background: `${color}15`, color: color, fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" }),
-      btnYellow: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.yellow, color: C.dark, fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
-
-      // Table
-      th: { textAlign: "left", padding: "10px 16px", fontSize: "12px", fontWeight: "700", color: C.muted, letterSpacing: "0.5px", borderBottom: `1px solid ${C.border}`, background: "#F9FAFB" },
-      td: { padding: "12px 16px", fontSize: "13px", color: C.text, borderBottom: `1px solid ${C.border}` },
-
-      // Badges
-      badge: (color, bg) => ({ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", color, background: bg }),
-
-      // Overlays
-      overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" },
-      modal: { background: "#fff", borderRadius: "16px", padding: "32px", width: "90%", maxWidth: "480px", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", animation: "fadeIn 0.2s ease" },
-
-      // Login
-      loginWrap: { minHeight: "100vh", background: `linear-gradient(135deg, #061a0e 0%, #0a2015 50%, #063318 100%)`, display: "flex", alignItems: "center", justifyContent: "center" },
-      loginCard: { background: "#fff", borderRadius: "20px", padding: "48px", width: "100%", maxWidth: "420px", boxShadow: "0 24px 80px rgba(0,0,0,0.3)" },
-
-      spinner: { display: "inline-block", width: "20px", height: "20px", border: `2px solid ${C.border}`, borderTop: `2px solid ${C.teal}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" },
+    const DARK = {
+      teal: "#00DD99", green: "#00C2AD", yellow: "#FFCF2B",
+      mint: "#6BF279", blue: "#0096AD", cream: "#F2F2E7",
+      dark: "#e8f5e9", text: "#f0fdf4", muted: "#9CA3AF",
+      bg: "#061a0e", card: "#0a2015", border: "#1a3a25",
     };
 
+
     // ── NAV ITEM ─────────────────────────────────────────────────────────────
-    function NavItem({ icon, label, active, onClick, badge }) {
+    function NavItem({ icon, label, active, onClick, badge, teal, muted }) {
       return (
-        <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", border: "none", cursor: "pointer", width: "100%", textAlign: "left", background: active ? `${C.teal}15` : "transparent", color: active ? C.teal : C.muted, fontWeight: active ? "700" : "500", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "all 0.15s", position: "relative" }}>
+        <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", border: "none", cursor: "pointer", width: "100%", textAlign: "left", background: active ? `${teal || "#00C2AD"}15` : "transparent", color: active ? (teal || "#00C2AD") : (muted || "#6B7280"), fontWeight: active ? "700" : "500", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "all 0.15s", position: "relative" }}>
           <span style={{ fontSize: "16px" }}>{icon}</span>
           <span>{label}</span>
           {badge > 0 && <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: "10px", fontSize: "11px", fontWeight: "700", padding: "1px 7px" }}>{badge}</span>}
@@ -154,16 +122,30 @@
       const [newPrize, setNewPrize] = useState("");
       const [newDept, setNewDept] = useState("");
       const [editDept, setEditDept] = useState(null);
-      const [companyForm, setCompanyForm] = useState({ name: "", logo: "" });
+      const [companyForm, setCompanyForm] = useState({ name: "", logo: "", color1: "#00C2AD", color2: "#00DD99", color3: "#FFCF2B" });
       const [companyMsg, setCompanyMsg] = useState("");
       const logoInputRef = useRef(null);
       const [editCatalogItem, setEditCatalogItem] = useState(null);
+      const [showPickerAdd, setShowPickerAdd] = useState(false);
+      const [showPickerEdit, setShowPickerEdit] = useState(false);
+      const [darkMode, setDarkMode] = useState(() => localStorage.getItem("meriti_dark") === "true");
+      const [challenge, setChallenge] = useState(null);
+      const [challengeForm, setChallengeForm] = useState({ title: "", description: "", targetPts: "", prize: "", deadline: "" });
+      const [challengeMsg, setChallengeMsg] = useState("");
+      const [showChallengeForm, setShowChallengeForm] = useState(false);
+      const [likes, setLikes] = useState({});
+      const [myLikes, setMyLikes] = useState([]);
       const [onboardingStep, setOnboardingStep] = useState(0);
       const [showOnboarding, setShowOnboarding] = useState(false);
       const [inviteEmail, setInviteEmail] = useState("");
       const [inviteMsg, setInviteMsg] = useState("");
       const [invitations, setInvitations] = useState([]);
       const [validationComment, setValidationComment] = useState({});
+
+      useEffect(() => {
+        document.body.classList.toggle("dark", darkMode);
+        localStorage.setItem("meriti_dark", darkMode);
+      }, [darkMode]);
 
       useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -182,7 +164,7 @@
       useEffect(() => {
         if (profile) {
           loadRecords(); loadProfiles(); loadHistory(); loadCatalog();
-          loadPrizes(); loadNotifications(); loadDepartments(); loadCompany(); loadInvitations(); checkOnboarding();
+          loadPrizes(); loadNotifications(); loadDepartments(); loadCompany(); loadInvitations(); checkOnboarding(); loadChallenge(); loadLikes();
         }
       }, [profile]);
 
@@ -205,11 +187,7 @@
       }
       async function loadCatalog() {
         const { data } = await supabase.from("catalog_items").select("*").order("created_at");
-        if (data && data.length > 0) { setCatalog(data); }
-        else {
-          const { data: ins } = await supabase.from("catalog_items").insert(DEFAULT_CATALOG).select();
-          setCatalog(ins || DEFAULT_CATALOG);
-        }
+        setCatalog(data || []);
       }
       async function loadPrizes() {
         const { data } = await supabase.from("prizes").select("*").order("created_at");
@@ -220,8 +198,18 @@
         setDepartments(data || []);
       }
       async function loadCompany() {
-        const { data } = await supabase.from("company_settings").select("*").limit(1).single();
-        if (data) { setCompany(data); setCompanyForm({ name: data.name || "", logo: data.logo || "" }); }
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("company_settings").select("*").eq("id", profile.company_id).single();
+        if (data) {
+          setCompany(data);
+          setCompanyForm({
+            name: data.name || "",
+            logo: data.logo || "",
+            color1: data.color1 || "#00C2AD",
+            color2: data.color2 || "#00DD99",
+            color3: data.color3 || "#FFCF2B",
+          });
+        }
       }
       async function loadNotifications() {
         if (!session) return;
@@ -239,11 +227,77 @@
         const done = comp && depts && depts.length > 0 && profs && profs.length > 0;
         if (!done) setShowOnboarding(true);
       }
+      async function loadChallenge() {
+        const { data } = await supabase.from("challenges").select("*").eq("active", true).limit(1).single();
+        if (data) setChallenge(data);
+        else setChallenge(null);
+      }
+      async function loadLikes() {
+        const { data: allLikes } = await supabase.from("likes").select("*");
+        const likeCounts = {};
+        (allLikes || []).forEach(l => { likeCounts[l.to_user_id] = (likeCounts[l.to_user_id] || 0) + 1; });
+        setLikes(likeCounts);
+        const today = new Date().toISOString().split("T")[0];
+        const myL = (allLikes || []).filter(l => l.from_user_id === session.user.id && l.date === today).map(l => l.to_user_id);
+        setMyLikes(myL);
+      }
+      async function handleLike(toUserId) {
+        if (myLikes.includes(toUserId) || toUserId === session.user.id) return;
+        const today = new Date().toISOString().split("T")[0];
+        await supabase.from("likes").insert({ from_user_id: session.user.id, to_user_id: toUserId, date: today, company_id: companyId });
+        await supabase.from("notifications").insert({ user_id: toUserId, message: `👏 ${profile.name} te ha dado un aplauso`, read: false, company_id: companyId });
+        await loadLikes();
+      }
+      async function handleSaveChallenge() {
+        if (!challengeForm.title.trim() || !challengeForm.targetPts || !challengeForm.deadline) { setChallengeMsg("⚠️ Completa título, objetivo y fecha límite."); return; }
+        await supabase.from("challenges").update({ active: false }).eq("active", true);
+        await supabase.from("challenges").insert({ title: challengeForm.title, description: challengeForm.description, target_pts: parseInt(challengeForm.targetPts), prize: challengeForm.prize, deadline: challengeForm.deadline, active: true, month: monthKey, company_id: companyId });
+        setChallengeForm({ title: "", description: "", targetPts: "", prize: "", deadline: "" });
+        setShowChallengeForm(false);
+        await loadChallenge();
+      }
+      async function handleCloseChallenge() {
+        if (!challenge) return;
+        await supabase.from("challenges").update({ active: false }).eq("id", challenge.id);
+        setChallenge(null);
+      }
+      function exportToExcel() {
+        const data = records.map(r => {
+          const cat = catalog.find(c => c.id === r.catalog_id);
+          const dept = departments.find(d => d.id === r.dept_id);
+          return {
+            "Nombre": r.user_name,
+            "Departamento": dept?.name || "—",
+            "Logro": cat?.label || "—",
+            "Descripción": r.description,
+            "Puntos": r.pts,
+            "Fecha": r.date,
+            "Mes": r.month,
+            "Validado": r.validated ? "Sí" : "No",
+            "Comentario manager": r.manager_comment || "—",
+          };
+        });
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Logros");
+        // History sheet
+        const histData = history.map(h => ({
+          "Mes": h.label,
+          "Ganador": h.winner,
+          ...Object.fromEntries((h.scores || []).map(s => [s.name, s.pts]))
+        }));
+        if (histData.length > 0) {
+          const ws2 = XLSX.utils.json_to_sheet(histData);
+          XLSX.utils.book_append_sheet(wb, ws2, "Histórico");
+        }
+        XLSX.writeFile(wb, `Meriti_${MONTH_NAMES[now.getMonth()]}_${now.getFullYear()}.xlsx`);
+      }
+
       async function handleSendInvite() {
         if (!inviteEmail.trim()) return;
         const existing = invitations.find(i => i.email === inviteEmail.trim());
         if (existing) { setInviteMsg("⚠️ Ya existe una invitación para ese email."); setTimeout(() => setInviteMsg(""), 3000); return; }
-        await supabase.from("invitations").insert({ email: inviteEmail.trim(), status: "pending" });
+        await supabase.from("invitations").insert({ email: inviteEmail.trim(), status: "pending", company_id: companyId });
         setInviteEmail(""); await loadInvitations();
         setInviteMsg("✅ Invitación registrada. Comparte el enlace de registro con tu equipo.");
         setTimeout(() => setInviteMsg(""), 4000);
@@ -254,8 +308,11 @@
       }
       async function handleEditCatalogItem() {
         if (!editCatalogItem?.label.trim() || !editCatalogItem?.pts) return;
-        await supabase.from("catalog_items").update({ label: editCatalogItem.label, pts: parseInt(editCatalogItem.pts), icon: editCatalogItem.icon }).eq("id", editCatalogItem.id);
-        setEditCatalogItem(null); await loadCatalog();
+        const { error } = await supabase.from("catalog_items").update({ label: editCatalogItem.label.trim(), pts: parseInt(editCatalogItem.pts), icon: editCatalogItem.icon }).eq("id", editCatalogItem.id);
+        if (error) { alert("Error al guardar: " + error.message); return; }
+        setEditCatalogItem(null);
+        setShowPickerEdit(false);
+        await loadCatalog();
       }
       async function handleValidateWithComment(id) {
         const comment = validationComment[id] || "";
@@ -263,7 +320,7 @@
         const rec = records.find(r => r.id === id);
         if (rec) {
           const msg = comment ? `✅ Tu logro "${rec.description}" fue validado — +${rec.pts} pts. Comentario: ${comment}` : `✅ Tu logro "${rec.description}" ha sido validado — +${rec.pts} pts`;
-          await supabase.from("notifications").insert({ user_id: rec.user_id, message: msg, read: false });
+          await supabase.from("notifications").insert({ user_id: rec.user_id, message: msg, read: false, company_id: companyId });
         }
         setValidationComment(vc => { const n = {...vc}; delete n[id]; return n; });
         await loadRecords();
@@ -284,7 +341,12 @@
         if (!authForm.name.trim()) { setAuthError("Introduce tu nombre."); return; }
         if (authForm.password.length < 6) { setAuthError("Mínimo 6 caracteres."); return; }
         setAuthLoading(true); setAuthError("");
-        const { error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password, options: { data: { name: authForm.name } } });
+        // Check for invite token in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviteToken = urlParams.get("invite");
+        const metadata = { name: authForm.name };
+        if (inviteToken) metadata.invite_token = inviteToken;
+        const { error } = await supabase.auth.signUp({ email: authForm.email, password: authForm.password, options: { data: metadata } });
         if (error) setAuthError(error.message);
         else setAuthError("✅ ¡Cuenta creada! Inicia sesión.");
         setAuthLoading(false);
@@ -294,10 +356,11 @@
       // ── COMPANY ───────────────────────────────────────────────────────────
       async function handleSaveCompany() {
         const existing = await supabase.from("company_settings").select("id").limit(1).single();
+        const payload = { name: companyForm.name, logo: companyForm.logo, color1: companyForm.color1, color2: companyForm.color2, color3: companyForm.color3 };
         if (existing.data) {
-          await supabase.from("company_settings").update({ name: companyForm.name, logo: companyForm.logo }).eq("id", existing.data.id);
+          await supabase.from("company_settings").update(payload).eq("id", existing.data.id);
         } else {
-          await supabase.from("company_settings").insert({ name: companyForm.name, logo: companyForm.logo });
+          await supabase.from("company_settings").insert(payload);
         }
         await loadCompany();
         setCompanyMsg("✅ Cambios guardados.");
@@ -314,7 +377,7 @@
       // ── DEPARTMENTS ───────────────────────────────────────────────────────
       async function handleAddDept() {
         if (!newDept.trim()) return;
-        await supabase.from("departments").insert({ name: newDept.trim() });
+        await supabase.from("departments").insert({ name: newDept.trim(), company_id: companyId });
         setNewDept(""); await loadDepartments();
       }
       async function handleSaveEditDept() {
@@ -330,7 +393,7 @@
       // ── CATALOG ───────────────────────────────────────────────────────────
       async function handleAddCatalogItem() {
         if (!newCatalogItem.label.trim() || !newCatalogItem.pts) return;
-        await supabase.from("catalog_items").insert({ label: newCatalogItem.label.trim(), pts: parseInt(newCatalogItem.pts), icon: newCatalogItem.icon || "⭐" });
+        await supabase.from("catalog_items").insert({ label: newCatalogItem.label.trim(), pts: parseInt(newCatalogItem.pts), icon: newCatalogItem.icon || "⭐", company_id: companyId });
         setNewCatalogItem({ label: "", pts: "", icon: "⭐" }); await loadCatalog();
       }
       async function handleDeleteCatalogItem(id) {
@@ -340,7 +403,7 @@
       // ── PRIZES ────────────────────────────────────────────────────────────
       async function handleAddPrize() {
         if (!newPrize.trim()) return;
-        await supabase.from("prizes").insert({ label: newPrize.trim() });
+        await supabase.from("prizes").insert({ label: newPrize.trim(), company_id: companyId });
         setNewPrize(""); await loadPrizes();
       }
       async function handleDeletePrize(id) {
@@ -352,7 +415,7 @@
         if (!form.catalogId || !form.date || !form.desc.trim()) { setFormMsg("⚠️ Completa todos los campos."); return; }
         const cat = catalog.find(c => c.id === form.catalogId);
         if (!cat) { setFormMsg("⚠️ Selecciona un item válido."); return; }
-        const { error } = await supabase.from("records").insert({ user_id: session.user.id, user_name: profile.name, catalog_id: cat.id, pts: cat.pts, description: form.desc, date: form.date, month: monthKey, validated: false, dept_id: form.deptId || null });
+        const { error } = await supabase.from("records").insert({ user_id: session.user.id, user_name: profile.name, catalog_id: cat.id, pts: cat.pts, description: form.desc, date: form.date, month: monthKey, validated: false, dept_id: form.deptId || null, company_id: companyId });
         if (error) { setFormMsg("❌ Error: " + error.message); return; }
         await loadRecords();
         setForm({ catalogId: "", date: new Date().toISOString().split("T")[0], desc: "", deptId: "" });
@@ -376,7 +439,7 @@
       async function handleCloseMonth() {
         const mRecs = records.filter(r => r.month === monthKey && r.validated);
         const scores = profiles.filter(p => p.role === "user").map(p => ({ name: p.name, pts: mRecs.filter(r => r.user_id === p.id).reduce((a, b) => a + b.pts, 0) })).sort((a, b) => b.pts - a.pts);
-        await supabase.from("month_history").insert({ month: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, winner: scores[0]?.name || "—", scores });
+        await supabase.from("month_history").insert({ month: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, winner: scores[0]?.name || "—", scores, company_id: companyId });
         await loadHistory(); setClosingMonth(false); setView("dashboard");
       }
 
@@ -392,6 +455,56 @@
       }
 
       // ── COMPUTED ──────────────────────────────────────────────────────────
+      const companyId = profile?.company_id;
+      const brandColor1 = company?.color1 || "#00C2AD";
+      const brandColor2 = company?.color2 || "#00DD99";
+      const brandColor3 = company?.color3 || "#FFCF2B";
+      const BRAND_COLORS = [brandColor1, brandColor2, brandColor3, "#6BF279", "#0096AD", "#99F999"];
+
+      const C = darkMode ? {
+        ...DARK,
+        teal: brandColor1,
+        green: brandColor2,
+        yellow: brandColor3,
+      } : {
+        ...LIGHT,
+        teal: brandColor1,
+        green: brandColor2,
+        yellow: brandColor3,
+      };
+      const S = {
+        app: { minHeight: "100vh", background: C.bg, fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "background 0.3s" },
+        sidebar: { width: "240px", minHeight: "100vh", background: C.card, borderRight: `1px solid ${C.border}`, display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, zIndex: 50 },
+        mainContent: { marginLeft: "240px", minHeight: "100vh", display: "flex", flexDirection: "column" },
+        topbar: { height: "64px", background: C.card, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", position: "sticky", top: 0, zIndex: 40 },
+        page: { padding: "32px", maxWidth: "1100px", animation: "fadeIn 0.3s ease" },
+        card: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "24px", marginBottom: "20px", transition: "background 0.3s, border-color 0.3s" },
+        cardSm: { background: C.card, border: `1px solid ${C.border}`, borderRadius: "10px", padding: "16px" },
+        statCard: (color) => ({ background: C.card, border: `1px solid ${C.border}`, borderRadius: "12px", padding: "20px 24px", borderLeft: `4px solid ${color}` }),
+        pageTitle: { fontSize: "24px", fontWeight: "800", color: C.text, marginBottom: "4px" },
+        pageSubtitle: { fontSize: "14px", color: C.muted, marginBottom: "28px" },
+        sectionLabel: { fontSize: "11px", fontWeight: "700", letterSpacing: "1.5px", color: C.muted, textTransform: "uppercase", marginBottom: "12px" },
+        cardTitle: { fontSize: "15px", fontWeight: "700", color: C.text, marginBottom: "4px" },
+        label: { fontSize: "13px", fontWeight: "600", color: C.text, marginBottom: "6px", display: "block" },
+        input: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: C.card, fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "border-color 0.2s" },
+        select: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: C.card, fontFamily: "'Plus Jakarta Sans', sans-serif" },
+        textarea: { width: "100%", padding: "10px 14px", borderRadius: "8px", border: `1.5px solid ${C.border}`, color: C.text, fontSize: "14px", outline: "none", background: C.card, fontFamily: "'Plus Jakarta Sans', sans-serif", resize: "vertical", minHeight: "80px" },
+        btnPrimary: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.teal, color: "#fff", fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+        btnSecondary: { padding: "10px 20px", borderRadius: "8px", border: `1.5px solid ${C.border}`, cursor: "pointer", background: C.card, color: C.text, fontWeight: "600", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+        btnDanger: { padding: "8px 14px", borderRadius: "7px", border: "none", cursor: "pointer", background: "#FEE2E2", color: "#DC2626", fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+        btnGhost: (color) => ({ padding: "7px 13px", borderRadius: "7px", border: "none", cursor: "pointer", background: `${color}15`, color: color, fontWeight: "600", fontSize: "13px", fontFamily: "'Plus Jakarta Sans', sans-serif" }),
+        btnYellow: { padding: "10px 20px", borderRadius: "8px", border: "none", cursor: "pointer", background: C.yellow, color: C.dark, fontWeight: "700", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif" },
+        th: { textAlign: "left", padding: "10px 16px", fontSize: "12px", fontWeight: "700", color: C.muted, letterSpacing: "0.5px", borderBottom: `1px solid ${C.border}`, background: darkMode ? "#0a2015" : "#F9FAFB" },
+        td: { padding: "12px 16px", fontSize: "13px", color: C.text, borderBottom: `1px solid ${C.border}` },
+        badge: (color, bg) => ({ display: "inline-flex", alignItems: "center", padding: "3px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", color, background: bg }),
+        roleBadge: (r) => ({ display: "inline-block", padding: "2px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: r === "admin" ? `${C.yellow}20` : `${C.teal}15`, color: r === "admin" ? C.yellow : C.teal }),
+        overlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(2px)" },
+        modal: { background: C.card, borderRadius: "16px", padding: "32px", width: "90%", maxWidth: "480px", boxShadow: "0 20px 60px rgba(0,0,0,0.15)", animation: "fadeIn 0.2s ease" },
+        loginWrap: { minHeight: "100vh", background: `linear-gradient(135deg, #061a0e 0%, #0a2015 50%, #063318 100%)`, display: "flex", alignItems: "center", justifyContent: "center" },
+        loginCard: { background: C.card, borderRadius: "20px", padding: "48px", width: "100%", maxWidth: "420px", boxShadow: "0 24px 80px rgba(0,0,0,0.3)" },
+        spinner: { display: "inline-block", width: "20px", height: "20px", border: `2px solid ${C.border}`, borderTop: `2px solid ${C.teal}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" },
+      };
+
       const teamProfiles = profiles.filter(p => p.role === "user");
       const allNames = teamProfiles.map(p => p.name);
       const getColor = (name) => BRAND_COLORS[([...allNames].sort().indexOf(name)) % BRAND_COLORS.length] || C.teal;
@@ -418,6 +531,9 @@
       const dMax = Math.max(...dPoints.map(u => u.pts), 1);
 
       const visibleRecords = profile?.role === "admin" ? records : records.filter(r => r.user_id === session?.user?.id);
+      const getTotalPts = (userId) => records.filter(r => r.user_id === userId && r.validated).reduce((a, b) => a + b.pts, 0);
+      const challengeCurrentPts = challenge ? records.filter(r => r.month === challenge.month && r.validated).reduce((a, b) => a + b.pts, 0) : 0;
+      const challengeProgress = challenge ? Math.min(Math.round((challengeCurrentPts / challenge.target_pts) * 100), 100) : 0;
       const unreadCount = notifications.filter(n => !n.read).length;
       const pendingCount = records.filter(r => !r.validated).length;
 
@@ -478,26 +594,29 @@
 
             <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
               <div style={S.sectionLabel} className="px-2">Principal</div>
-              <NavItem icon="📊" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
-              {profile.role !== "admin" && <NavItem icon="➕" label="Registrar logro" active={view === "registrar"} onClick={() => setView("registrar")} />}
-              <NavItem icon="📋" label="Historial" active={view === "historial"} onClick={() => setView("historial")} />
+              <NavItem teal={C.teal} muted={C.muted} icon="📊" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
+              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="➕" label="Registrar logro" active={view === "registrar"} onClick={() => setView("registrar")} />}
+              <NavItem teal={C.teal} muted={C.muted} icon="📋" label="Historial" active={view === "historial"} onClick={() => setView("historial")} />
+              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="👤" label="Mi perfil" active={view === "perfil"} onClick={() => setView("perfil")} />}
               {(profile.role === "admin" || (winner && winner.id === profile.id)) && (
-                <NavItem icon="🎡" label="Ruleta" active={view === "ruleta"} onClick={() => setView("ruleta")} />
+                <NavItem teal={C.teal} muted={C.muted} icon="🎡" label="Ruleta" active={view === "ruleta"} onClick={() => setView("ruleta")} />
               )}
               {profile.role === "admin" && (
                 <>
                   <div style={{ ...S.sectionLabel, marginTop: "16px" }}>Administración</div>
-                  <NavItem icon="✅" label="Validar logros" active={view === "validar"} onClick={() => setView("validar")} badge={pendingCount} />
-                  <NavItem icon="👥" label="Equipo" active={view === "equipo"} onClick={() => setView("equipo")} />
-                  <NavItem icon="🏢" label="Departamentos" active={view === "departamentos"} onClick={() => setView("departamentos")} />
-                  <NavItem icon="📝" label="Catálogo" active={view === "catalogo"} onClick={() => setView("catalogo")} />
-                  <NavItem icon="⚙️" label="Empresa" active={view === "empresa"} onClick={() => setView("empresa")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="✅" label="Validar logros" active={view === "validar"} onClick={() => setView("validar")} badge={pendingCount} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="👥" label="Equipo" active={view === "equipo"} onClick={() => setView("equipo")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="🏢" label="Departamentos" active={view === "departamentos"} onClick={() => setView("departamentos")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="📝" label="Catálogo" active={view === "catalogo"} onClick={() => setView("catalogo")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="⚙️" label="Empresa" active={view === "empresa"} onClick={() => setView("empresa")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="🎯" label="Reto colectivo" active={view === "reto"} onClick={() => setView("reto")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="📈" label="Estadísticas" active={view === "stats"} onClick={() => setView("stats")} />
                 </>
               )}
             </nav>
 
             <div style={{ padding: "12px 8px", borderTop: `1px solid ${C.border}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "8px", background: "#F9FAFB" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "8px", background: darkMode ? "#0d2a18" : "#F9FAFB" }}>
                 <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "13px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "13px", fontWeight: "700", color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
@@ -522,6 +641,9 @@
                 {view === "departamentos" && "Departamentos"}
                 {view === "catalogo" && "Catálogo de logros"}
                 {view === "empresa" && "Configuración de empresa"}
+                {view === "perfil" && "Mi perfil"}
+                {view === "reto" && "Reto Colectivo"}
+                {view === "stats" && "Estadísticas"}
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                 {profile.role !== "admin" && (
@@ -534,12 +656,17 @@
                       <div style={{ position: "absolute", right: 0, top: "44px", width: "320px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "12px", zIndex: 300, boxShadow: "0 8px 32px rgba(0,0,0,0.12)" }}>
                         <div style={S.sectionLabel}>Notificaciones</div>
                         {notifications.length === 0 ? <div style={{ color: C.muted, fontSize: "13px", textAlign: "center", padding: "16px 0" }}>Sin notificaciones</div>
-                          : notifications.map(n => <div key={n.id} style={{ padding: "10px 12px", borderRadius: "8px", marginBottom: "6px", background: n.read ? "#F9FAFB" : `${C.teal}10`, border: `1px solid ${n.read ? C.border : C.teal}30`, fontSize: "13px", color: n.read ? C.muted : C.text }}>{n.message}</div>)}
+                          : notifications.map(n => <div key={n.id} style={{ padding: "10px 12px", borderRadius: "8px", marginBottom: "6px", background: n.read ? (darkMode ? "#0d2a18" : "#F9FAFB") : `${C.teal}10`, border: `1px solid ${n.read ? C.border : C.teal}30`, fontSize: "13px", color: n.read ? C.muted : C.text }}>{n.message}</div>)}
                       </div>
                     )}
                   </div>
                 )}
-                <div style={{ fontSize: "13px", color: C.muted }}>{MONTH_NAMES[now.getMonth()]} {now.getFullYear()}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <button onClick={() => setDarkMode(d => !d)} style={{ background: darkMode ? "#1f2937" : "#F3F4F6", border: "none", cursor: "pointer", borderRadius: "8px", padding: "7px 12px", fontSize: "16px", color: darkMode ? "#f9fafb" : "#374151", fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: "600", display: "flex", alignItems: "center", gap: "6px" }}>
+                    {darkMode ? "☀️" : "🌙"}
+                  </button>
+                  <div style={{ fontSize: "13px", color: C.muted }}>{MONTH_NAMES[now.getMonth()]} {now.getFullYear()}</div>
+                </div>
               </div>
             </header>
 
@@ -580,6 +707,34 @@
                     </div>
                   )}
 
+                  {/* Challenge banner */}
+                  {challenge && isCurrent && (
+                    <div style={{ background: `linear-gradient(135deg, ${C.teal}15, ${C.green}08)`, border: `1px solid ${C.teal}30`, borderRadius: "12px", padding: "20px 24px", marginBottom: "20px" }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px" }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                            <span style={{ fontSize: "20px" }}>🎯</span>
+                            <span style={{ fontWeight: "800", fontSize: "16px" }}>Reto del equipo</span>
+                            <span style={{ ...S.badge(C.teal, `${C.teal}15`) }}>Activo</span>
+                          </div>
+                          <div style={{ fontWeight: "700", fontSize: "17px", marginBottom: "4px" }}>{challenge.title}</div>
+                          {challenge.description && <div style={{ fontSize: "13px", color: C.muted, marginBottom: "10px" }}>{challenge.description}</div>}
+                          {challenge.prize && <div style={{ fontSize: "13px", marginBottom: "12px" }}>🎁 Premio: <strong>{challenge.prize}</strong></div>}
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                            <div style={{ flex: 1, height: "8px", borderRadius: "4px", background: `${C.teal}20`, overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${challengeProgress}%`, background: `linear-gradient(90deg, ${C.teal}, ${C.green})`, borderRadius: "4px", transition: "width 0.8s ease" }} />
+                            </div>
+                            <span style={{ fontSize: "13px", fontWeight: "700", color: C.teal, whiteSpace: "nowrap" }}>{challengeCurrentPts} / {challenge.target_pts} pts</span>
+                          </div>
+                          <div style={{ fontSize: "12px", color: C.muted, marginTop: "6px" }}>Fecha límite: {challenge.deadline} · {challengeProgress}% completado</div>
+                        </div>
+                        {profile.role === "admin" && (
+                          <button style={S.btnDanger} onClick={handleCloseChallenge}>Cerrar reto</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Leaderboard */}
                   <div style={S.card}>
                     <div style={S.sectionLabel}>Clasificación</div>
@@ -593,20 +748,32 @@
                         {dPoints.map((u, i) => {
                           const color = getColor(u.name);
                           return (
-                            <div key={u.id || u.name} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderRadius: "10px", background: i === 0 ? `${color}10` : "#F9FAFB", border: `1px solid ${i === 0 ? color + "30" : C.border}` }}>
+                            <div key={u.id || u.name} style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderRadius: "10px", background: i === 0 ? `${color}10` : darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${i === 0 ? color + "30" : C.border}` }}>
                               <div style={{ width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: i === 0 ? "linear-gradient(135deg, #FFD700, #FFA500)" : i === 1 ? "linear-gradient(135deg, #C0C0C0, #888)" : "linear-gradient(135deg, #CD7F32, #8B4513)", fontSize: "16px", flexShrink: 0 }}>
                                 {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                               </div>
                               <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "14px", color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "5px" }}>{u.name}
-                                  {departments.find(d => d.id === u.dept_id) && <span style={{ marginLeft: "8px", ...S.badge(C.teal, `${C.teal}15`) }}>{departments.find(d => d.id === u.dept_id)?.name}</span>}
+                                <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "5px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                                  {u.name}
+                                  {(() => { const lv = getLevel(getTotalPts(u.id)); return <span style={{ ...S.badge(lv.color, `${lv.color}15`), fontSize: "11px" }}>{lv.icon} {lv.label}</span>; })()}
+                                  {departments.find(d => d.id === u.dept_id) && <span style={{ ...S.badge(C.teal, `${C.teal}15`), fontSize: "11px" }}>{departments.find(d => d.id === u.dept_id)?.name}</span>}
                                 </div>
                                 <div style={{ height: "5px", borderRadius: "3px", background: `${color}30`, overflow: "hidden" }}>
                                   <div style={{ height: "100%", width: `${Math.max((u.pts / dMax) * 100, 3)}%`, background: color, borderRadius: "3px", transition: "width 0.8s ease" }} />
                                 </div>
                               </div>
-                              <div style={{ fontSize: "22px", fontWeight: "900", color, flexShrink: 0 }}>{u.pts}<span style={{ fontSize: "12px", color: C.muted, fontWeight: "500" }}> pts</span></div>
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px", flexShrink: 0 }}>
+                                <div style={{ fontSize: "22px", fontWeight: "900", color }}>{u.pts}<span style={{ fontSize: "12px", color: C.muted, fontWeight: "500" }}> pts</span></div>
+                                {profile.role !== "admin" && u.id !== session.user.id && (
+                                  <button onClick={() => handleLike(u.id)} style={{ display: "flex", alignItems: "center", gap: "4px", padding: "4px 10px", borderRadius: "20px", border: `1px solid ${myLikes.includes(u.id) ? C.teal : C.border}`, background: myLikes.includes(u.id) ? `${C.teal}15` : "#fff", cursor: myLikes.includes(u.id) ? "default" : "pointer", fontSize: "12px", fontWeight: "600", color: myLikes.includes(u.id) ? C.teal : C.muted, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                                    👏 {likes[u.id] || 0}
+                                  </button>
+                                )}
+                                {profile.role === "admin" && (
+                                  <span style={{ fontSize: "12px", color: C.muted }}>👏 {likes[u.id] || 0}</span>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
@@ -677,6 +844,130 @@
                 </div>
               )}
 
+              {/* ── PERFIL ── */}
+              {view === "perfil" && profile.role !== "admin" && (() => {
+                const myRecords = records.filter(r => r.user_id === session.user.id);
+                const myValidated = myRecords.filter(r => r.validated);
+                const totalPts = myValidated.reduce((a, b) => a + b.pts, 0);
+                const thisMonthPts = myValidated.filter(r => r.month === monthKey).reduce((a, b) => a + b.pts, 0);
+                const myRank = currentPoints.findIndex(p => p.id === profile.id) + 1;
+                const color = getColor(profile.name);
+
+                // Points by month (last 6 months)
+                const last6 = [];
+                for (let i = 5; i >= 0; i--) {
+                  const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                  const key = `${d.getFullYear()}-${d.getMonth()}`;
+                  const label = MONTH_NAMES[d.getMonth()].slice(0, 3);
+                  const pts = myValidated.filter(r => r.month === key).reduce((a, b) => a + b.pts, 0);
+                  last6.push({ label, pts, key });
+                }
+                const maxBar = Math.max(...last6.map(m => m.pts), 1);
+
+                // Most used catalog items
+                const itemCount = {};
+                myValidated.forEach(r => { itemCount[r.catalog_id] = (itemCount[r.catalog_id] || 0) + 1; });
+                const topItems = Object.entries(itemCount).sort((a,b) => b[1]-a[1]).slice(0,3).map(([id, count]) => ({ cat: catalog.find(c => c.id === id), count }));
+
+                // Historical ranking positions
+                const historicalWins = history.filter(h => h.winner === profile.name).length;
+
+                return (
+                  <>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "28px" }}>
+                      <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: "28px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
+                      <div>
+                        <div style={{ fontSize: "26px", fontWeight: "900" }}>{profile.name}</div>
+                        <div style={{ fontSize: "14px", color: C.muted }}>{profile.email}</div>
+                        {departments.find(d => d.id === profile.dept_id) && (
+                          <span style={{ ...S.badge(C.teal, `${C.teal}15`), marginTop: "6px" }}>{departments.find(d => d.id === profile.dept_id)?.name}</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Stat cards */}
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
+                      {[
+                        { label: "Puntos este mes", value: thisMonthPts, icon: "📅", color: C.teal },
+                        { label: "Puntos totales", value: totalPts, icon: "🏆", color: C.green },
+                        { label: "Posición actual", value: myRank > 0 ? `#${myRank}` : "—", icon: "🎯", color: C.yellow },
+                        { label: "Meses ganados", value: historicalWins, icon: "🥇", color: "#F59E0B" },
+                      ].map(s => (
+                        <div key={s.label} style={{ ...S.statCard(s.color), display: "flex", flexDirection: "column", gap: "6px" }}>
+                          <div style={{ fontSize: "22px" }}>{s.icon}</div>
+                          <div style={{ fontSize: "26px", fontWeight: "900", color: s.color }}>{s.value}</div>
+                          <div style={{ fontSize: "12px", color: C.muted, fontWeight: "600" }}>{s.label}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Evolution chart */}
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Evolución de puntos — últimos 6 meses</div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: "12px", height: "140px", padding: "0 8px" }}>
+                        {last6.map((m, i) => (
+                          <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", height: "100%" }}>
+                            <div style={{ fontSize: "12px", fontWeight: "700", color: m.pts > 0 ? color : C.muted }}>{m.pts > 0 ? m.pts : ""}</div>
+                            <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
+                              <div style={{ width: "100%", height: `${Math.max((m.pts / maxBar) * 100, m.pts > 0 ? 8 : 3)}%`, background: m.key === monthKey ? color : `${color}50`, borderRadius: "6px 6px 0 0", transition: "height 0.6s ease", minHeight: "3px" }} />
+                            </div>
+                            <div style={{ fontSize: "11px", color: C.muted, fontWeight: "600" }}>{m.label}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Top logros */}
+                    {topItems.length > 0 && (
+                      <div style={S.card}>
+                        <div style={S.sectionLabel}>Logros más frecuentes</div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          {topItems.map(({ cat, count }) => cat && (
+                            <div key={cat.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                <span style={{ fontSize: "20px" }}>{cat.icon}</span>
+                                <span style={{ fontWeight: "600", fontSize: "14px" }}>{cat.label}</span>
+                              </div>
+                              <span style={S.badge(color, `${color}15`)}>{count}x</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recent activity */}
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Actividad reciente</div>
+                      {myRecords.slice(0, 8).length === 0 ? (
+                        <div style={{ color: C.muted, textAlign: "center", padding: "24px 0" }}>Sin logros registrados aún</div>
+                      ) : (
+                        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                          <thead><tr><th style={S.th}>Logro</th><th style={S.th}>Descripción</th><th style={S.th}>Fecha</th><th style={S.th}>Pts</th><th style={S.th}>Estado</th></tr></thead>
+                          <tbody>
+                            {myRecords.slice(0, 8).map(r => {
+                              const cat = catalog.find(c => c.id === r.catalog_id);
+                              return (
+                                <tr key={r.id}>
+                                  <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                                  <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
+                                  <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
+                                  <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
+                                  <td style={S.td}>
+                                    {r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}
+                                    {r.manager_comment && <div style={{ fontSize: "11px", color: C.muted, marginTop: "3px" }}>💬 {r.manager_comment}</div>}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
               {/* ── HISTORIAL ── */}
               {view === "historial" && (
                 <>
@@ -711,7 +1002,7 @@
                     <div style={S.card}>
                       <div style={S.sectionLabel}>Meses cerrados</div>
                       {history.map((h, i) => (
-                        <div key={i} style={{ padding: "14px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}`, marginBottom: "10px" }}>
+                        <div key={i} style={{ padding: "14px 16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}`, marginBottom: "10px" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                             <div style={{ fontWeight: "700" }}>{h.label}</div>
                             <span style={S.badge("#D97706","#FEF3C7")}>🥇 {h.winner}</span>
@@ -803,7 +1094,7 @@
                       <div style={S.sectionLabel}>Premios disponibles</div>
                       <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
                         {prizes.map((p, i) => (
-                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                          <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                             <span style={{ fontSize: "14px", fontWeight: "600" }}>🎁 {p.label}</span>
                             <button style={S.btnDanger} onClick={() => handleDeletePrize(p.id)}>Eliminar</button>
                           </div>
@@ -897,7 +1188,11 @@
                   <div style={S.card}>
                     <div style={S.sectionLabel}>Invitaciones</div>
                     <div style={{ fontSize: "13px", color: C.muted, marginBottom: "16px" }}>
-                      Registra los emails de tu equipo. Compárteles este enlace para que se registren: <strong style={{ color: C.teal }}>{window.location.href}</strong>
+                      Comparte este enlace con tu equipo para que se registren directamente en tu empresa:
+                    </div>
+                    <div style={{ padding: "10px 14px", borderRadius: "8px", background: `${C.teal}10`, border: `1px solid ${C.teal}30`, marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                      <span style={{ fontSize: "12px", color: C.teal, fontWeight: "600", wordBreak: "break-all" }}>{`${window.location.origin}${window.location.pathname}?invite=${company?.invite_token || ""}`}</span>
+                      <button style={{ ...S.btnGhost(C.teal), whiteSpace: "nowrap", flexShrink: 0 }} onClick={() => navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}?invite=${company?.invite_token || ""}`)}>📋 Copiar</button>
                     </div>
                     <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
                       <input style={{ ...S.input, flex: 1 }} type="email" placeholder="email@empresa.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSendInvite()} />
@@ -909,7 +1204,7 @@
                         {invitations.map(inv => {
                           const isRegistered = profiles.find(p => p.email === inv.email);
                           return (
-                            <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                            <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                                 <span style={{ fontSize: "14px" }}>{inv.email}</span>
                                 {isRegistered ? <span style={S.badge("#059669","#D1FAE5")}>✓ Registrado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}
@@ -934,7 +1229,7 @@
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
                       {departments.length === 0 && <div style={{ color: C.muted, fontSize: "14px", padding: "16px 0" }}>Sin departamentos creados aún</div>}
                       {departments.map(d => (
-                        <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                        <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                           {editDept?.id === d.id ? (
                             <input style={{ ...S.input, flex: 1, marginRight: "12px" }} value={editDept.name} onChange={e => setEditDept(ed => ({ ...ed, name: e.target.value }))} onKeyDown={e => e.key === "Enter" && handleSaveEditDept()} autoFocus />
                           ) : (
@@ -972,7 +1267,7 @@
                   <div style={S.card}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
                       {catalog.map(item => (
-                        <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                        <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                             <span style={{ fontSize: "22px" }}>{item.icon}</span>
                             <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
@@ -985,10 +1280,22 @@
                         </div>
                       ))}
                     </div>
-                    <div style={{ padding: "16px", borderRadius: "10px", background: "#F9FAFB", border: `1px dashed ${C.border}` }}>
+                    <div style={{ padding: "16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px dashed ${C.border}` }}>
                       <div style={{ ...S.sectionLabel, marginBottom: "14px" }}>Añadir nuevo item</div>
+                      <div style={{ marginBottom: "10px" }}>
+                        <label style={S.label}>Icono</label>
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          <button onClick={() => setShowPickerAdd(v => !v)} style={{ width: "48px", height: "48px", borderRadius: "10px", border: `2px solid ${C.teal}`, background: "#fff", cursor: "pointer", fontSize: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>{newCatalogItem.icon || "⭐"}</button>
+                          {showPickerAdd && (
+                            <div style={{ position: "absolute", top: "54px", left: 0, zIndex: 500, background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", flexWrap: "wrap", gap: "4px", width: "240px" }}>
+                              {["🎓","🤝","💡","✅","⚡","🔧","🏆","🎯","🌟","🔥","💪","📚","🎨","🛠️","📊","🚀","👏","💰","🎁","⭐","🏅","🎖️","📈","🔑"].map(em => (
+                                <button key={em} onClick={() => { setNewCatalogItem(f => ({ ...f, icon: em })); setShowPickerAdd(false); }} style={{ width: "36px", height: "36px", borderRadius: "8px", border: `1.5px solid ${newCatalogItem.icon === em ? C.teal : "transparent"}`, background: newCatalogItem.icon === em ? `${C.teal}15` : "#F9FAFB", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>{em}</button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                        <input style={{ ...S.input, width: "70px" }} placeholder="🎯" value={newCatalogItem.icon} onChange={e => setNewCatalogItem(f => ({ ...f, icon: e.target.value }))} />
                         <input style={{ ...S.input, flex: 2, minWidth: "180px" }} placeholder="Nombre del logro..." value={newCatalogItem.label} onChange={e => setNewCatalogItem(f => ({ ...f, label: e.target.value }))} />
                         <input style={{ ...S.input, width: "90px" }} type="number" placeholder="Pts" min="1" value={newCatalogItem.pts} onChange={e => setNewCatalogItem(f => ({ ...f, pts: e.target.value }))} />
                         <button style={S.btnPrimary} onClick={handleAddCatalogItem}>Añadir</button>
@@ -1022,11 +1329,258 @@
                         </div>
                       </div>
                       {companyMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: "#D1FAE5", color: "#065F46" }}>{companyMsg}</div>}
+                      <div>
+                        <label style={S.label}>Colores corporativos</label>
+                        <div style={{ fontSize: "13px", color: C.muted, marginBottom: "12px" }}>Estos colores personalizan el aspecto de toda la app</div>
+                        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                          {[
+                            { key: "color1", label: "Color principal" },
+                            { key: "color2", label: "Color secundario" },
+                            { key: "color3", label: "Color acento" },
+                          ].map(({ key, label }) => (
+                            <div key={key} style={{ display: "flex", flexDirection: "column", gap: "6px", alignItems: "center" }}>
+                              <div style={{ position: "relative" }}>
+                                <input type="color" value={companyForm[key]} onChange={e => setCompanyForm(f => ({ ...f, [key]: e.target.value }))}
+                                  style={{ width: "56px", height: "56px", borderRadius: "12px", border: `2px solid ${C.border}`, cursor: "pointer", padding: "2px", background: "none" }} />
+                              </div>
+                              <div style={{ fontSize: "12px", color: C.muted, fontWeight: "600", textAlign: "center" }}>{label}</div>
+                              <div style={{ fontSize: "11px", color: C.muted, fontFamily: "monospace" }}>{companyForm[key]}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ marginTop: "14px", display: "flex", gap: "8px" }}>
+                          <div style={{ fontSize: "12px", color: C.muted, marginBottom: "4px" }}>Vista previa:</div>
+                          <span style={{ padding: "4px 12px", borderRadius: "20px", background: companyForm.color1, color: "#fff", fontSize: "12px", fontWeight: "700" }}>Principal</span>
+                          <span style={{ padding: "4px 12px", borderRadius: "20px", background: companyForm.color2, color: "#fff", fontSize: "12px", fontWeight: "700" }}>Secundario</span>
+                          <span style={{ padding: "4px 12px", borderRadius: "20px", background: companyForm.color3, color: "#000", fontSize: "12px", fontWeight: "700" }}>Acento</span>
+                        </div>
+                      </div>
                       <button style={S.btnPrimary} onClick={handleSaveCompany}>Guardar cambios</button>
                     </div>
                   </div>
+
+                  <div style={{ ...S.card, maxWidth: "560px", marginTop: "0" }}>
+                    <div style={S.sectionLabel}>Configuración inicial</div>
+                    <div style={{ fontSize: "14px", color: C.muted, marginBottom: "16px" }}>Vuelve a ver la guía de configuración paso a paso.</div>
+                    <button style={S.btnSecondary} onClick={() => { setOnboardingStep(0); setShowOnboarding(true); }}>🚀 Ver guía de inicio</button>
+                  </div>
                 </>
               )}
+
+            {/* ── ESTADÍSTICAS ── */}
+            {view === "stats" && profile.role === "admin" && (() => {
+              // Points by month last 6
+              const last6 = [];
+              for (let i = 5; i >= 0; i--) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const key = `${d.getFullYear()}-${d.getMonth()}`;
+                const label = MONTH_NAMES[d.getMonth()].slice(0,3);
+                const pts = records.filter(r => r.month === key && r.validated).reduce((a,b) => a+b.pts, 0);
+                const count = records.filter(r => r.month === key && r.validated).length;
+                last6.push({ label, pts, count, key });
+              }
+              const maxBar = Math.max(...last6.map(m => m.pts), 1);
+
+              // Top employees all time
+              const topEmployees = teamProfiles.map(p => ({
+                ...p,
+                totalPts: records.filter(r => r.user_id === p.id && r.validated).reduce((a,b) => a+b.pts, 0),
+                totalLogros: records.filter(r => r.user_id === p.id && r.validated).length,
+              })).sort((a,b) => b.totalPts - a.totalPts);
+
+              // Top catalog items
+              const itemUsage = {};
+              records.filter(r => r.validated).forEach(r => { itemUsage[r.catalog_id] = (itemUsage[r.catalog_id] || 0) + 1; });
+              const topItems = Object.entries(itemUsage).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id, count]) => ({ cat: catalog.find(c => c.id === id), count }));
+
+              // Summary stats
+              const totalValidated = records.filter(r => r.validated).length;
+              const totalPending = records.filter(r => !r.validated).length;
+              const totalPtsAllTime = records.filter(r => r.validated).reduce((a,b) => a+b.pts, 0);
+              const avgPtsPerMonth = last6.reduce((a,b) => a+b.pts, 0) / 6;
+
+              return (
+                <>
+                  <div style={S.pageTitle}>Estadísticas</div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
+                    <div style={S.pageSubtitle}>Resumen de actividad de tu equipo</div>
+                    <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
+                  </div>
+
+                  {/* KPI cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
+                    {[
+                      { label: "Logros validados", value: totalValidated, icon: "✅", color: C.teal },
+                      { label: "Logros pendientes", value: totalPending, icon: "⏳", color: C.yellow },
+                      { label: "Puntos totales", value: totalPtsAllTime, icon: "🏆", color: C.green },
+                      { label: "Media pts/mes", value: Math.round(avgPtsPerMonth), icon: "📊", color: C.blue },
+                    ].map(s => (
+                      <div key={s.label} style={{ ...S.statCard(s.color), display: "flex", flexDirection: "column", gap: "6px" }}>
+                        <div style={{ fontSize: "22px" }}>{s.icon}</div>
+                        <div style={{ fontSize: "28px", fontWeight: "900", color: s.color }}>{s.value}</div>
+                        <div style={{ fontSize: "12px", color: C.muted, fontWeight: "600" }}>{s.label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Evolution chart */}
+                  <div style={S.card}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                      <div style={S.sectionLabel}>Evolución del equipo — últimos 6 meses</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "flex-end", gap: "16px", height: "160px", padding: "0 8px" }}>
+                      {last6.map((m) => (
+                        <div key={m.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: "6px", height: "100%" }}>
+                          <div style={{ fontSize: "12px", fontWeight: "700", color: m.pts > 0 ? C.teal : C.muted }}>{m.pts > 0 ? m.pts : ""}</div>
+                          <div style={{ flex: 1, width: "100%", display: "flex", alignItems: "flex-end" }}>
+                            <div style={{ width: "100%", height: `${Math.max((m.pts / maxBar) * 100, m.pts > 0 ? 6 : 2)}%`, background: m.key === monthKey ? C.teal : `${C.teal}50`, borderRadius: "6px 6px 0 0", transition: "height 0.6s ease", minHeight: "2px", position: "relative" }}>
+                              {m.count > 0 && <div style={{ position: "absolute", bottom: "4px", left: "50%", transform: "translateX(-50%)", fontSize: "10px", color: "#fff", fontWeight: "700" }}>{m.count}</div>}
+                            </div>
+                          </div>
+                          <div style={{ fontSize: "12px", color: C.muted, fontWeight: "600" }}>{m.label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: "11px", color: C.muted, marginTop: "8px", textAlign: "center" }}>El número dentro de cada barra indica logros registrados ese mes</div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                    {/* Top employees */}
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Ranking histórico</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {topEmployees.map((u, i) => {
+                          const color = getColor(u.name);
+                          const lv = getLevel(u.totalPts);
+                          return (
+                            <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: i === 0 ? `${color}10` : "#F9FAFB", border: `1px solid ${i === 0 ? color+"30" : C.border}` }}>
+                              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "12px", color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: "13px", fontWeight: "700" }}>{u.name} <span style={{ ...S.badge(lv.color, `${lv.color}15`), fontSize: "10px" }}>{lv.icon} {lv.label}</span></div>
+                                <div style={{ fontSize: "11px", color: C.muted }}>{u.totalLogros} logros registrados</div>
+                              </div>
+                              <div style={{ fontWeight: "800", color, fontSize: "16px" }}>{u.totalPts} pts</div>
+                            </div>
+                          );
+                        })}
+                        {topEmployees.length === 0 && <div style={{ color: C.muted, fontSize: "13px" }}>Sin datos aún</div>}
+                      </div>
+                    </div>
+
+                    {/* Top catalog items */}
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Logros más registrados</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                        {topItems.map(({ cat, count }, i) => cat && (
+                          <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}` }}>
+                            <span style={{ fontSize: "22px" }}>{cat.icon}</span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: "13px", fontWeight: "600" }}>{cat.label}</div>
+                              <div style={{ height: "4px", borderRadius: "2px", background: `${C.teal}20`, marginTop: "4px", overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${(count / topItems[0].count) * 100}%`, background: C.teal, borderRadius: "2px" }} />
+                              </div>
+                            </div>
+                            <span style={{ ...S.badge(C.teal, `${C.teal}15`), fontSize: "12px" }}>{count}x</span>
+                          </div>
+                        ))}
+                        {topItems.length === 0 && <div style={{ color: C.muted, fontSize: "13px" }}>Sin datos aún</div>}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Winners history */}
+                  {history.length > 0 && (
+                    <div style={S.card}>
+                      <div style={S.sectionLabel}>Ganadores históricos</div>
+                      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+                        {history.map((h, i) => (
+                          <div key={i} style={{ padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0d2a18" : "#F9FAFB", border: `1px solid ${C.border}`, minWidth: "160px" }}>
+                            <div style={{ fontSize: "11px", color: C.muted, fontWeight: "600", marginBottom: "4px" }}>{h.label}</div>
+                            <div style={{ fontWeight: "800", color: getColor(h.winner) }}>🥇 {h.winner}</div>
+                            <div style={{ fontSize: "11px", color: C.muted, marginTop: "2px" }}>{(h.scores || []).find(s => s.name === h.winner)?.pts || 0} pts</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* ── RETO COLECTIVO ── */}
+            {view === "reto" && profile.role === "admin" && (
+              <>
+                <div style={S.pageTitle}>Reto Colectivo</div>
+                <div style={S.pageSubtitle}>Lanza un objetivo compartido para motivar a todo el equipo</div>
+
+                {challenge ? (
+                  <div style={S.card}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+                          <span style={S.badge(C.teal, `${C.teal}15`)}>🎯 Reto activo</span>
+                        </div>
+                        <div style={{ fontSize: "20px", fontWeight: "800" }}>{challenge.title}</div>
+                        {challenge.description && <div style={{ color: C.muted, fontSize: "14px", marginTop: "4px" }}>{challenge.description}</div>}
+                      </div>
+                      <button style={S.btnDanger} onClick={handleCloseChallenge}>Cerrar reto</button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "16px", marginBottom: "20px" }}>
+                      {[
+                        { label: "Objetivo", value: `${challenge.target_pts} pts`, icon: "🎯" },
+                        { label: "Conseguidos", value: `${challengeCurrentPts} pts`, icon: "📊" },
+                        { label: "Fecha límite", value: challenge.deadline, icon: "📅" },
+                      ].map(s => (
+                        <div key={s.label} style={{ ...S.statCard(C.teal), display: "flex", gap: "12px", alignItems: "center" }}>
+                          <span style={{ fontSize: "24px" }}>{s.icon}</span>
+                          <div>
+                            <div style={{ fontSize: "18px", fontWeight: "800", color: C.teal }}>{s.value}</div>
+                            <div style={{ fontSize: "12px", color: C.muted }}>{s.label}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {challenge.prize && <div style={{ padding: "12px 16px", borderRadius: "8px", background: `${C.yellow}15`, border: `1px solid ${C.yellow}30`, fontSize: "14px" }}>🎁 Premio: <strong>{challenge.prize}</strong></div>}
+                    <div style={{ marginTop: "16px" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "13px", fontWeight: "600" }}>Progreso del equipo</span>
+                        <span style={{ fontSize: "13px", fontWeight: "700", color: C.teal }}>{challengeProgress}%</span>
+                      </div>
+                      <div style={{ height: "10px", borderRadius: "5px", background: `${C.teal}20`, overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: `${challengeProgress}%`, background: `linear-gradient(90deg, ${C.teal}, ${C.green})`, borderRadius: "5px", transition: "width 0.8s ease" }} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ ...S.card, textAlign: "center", padding: "48px" }}>
+                    <div style={{ fontSize: "48px", marginBottom: "12px" }}>🎯</div>
+                    <div style={{ fontWeight: "700", fontSize: "17px", marginBottom: "6px" }}>No hay ningún reto activo</div>
+                    <div style={{ color: C.muted, fontSize: "14px", marginBottom: "24px" }}>Lanza un reto colectivo para motivar a tu equipo</div>
+                    <button style={S.btnPrimary} onClick={() => setShowChallengeForm(true)}>🚀 Lanzar nuevo reto</button>
+                  </div>
+                )}
+
+                {!challenge && showChallengeForm && (
+                  <div style={S.card}>
+                    <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "20px" }}>Nuevo reto colectivo</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                      <div><label style={S.label}>Título del reto *</label><input style={S.input} placeholder="Ej: ¡Llegamos a 300 puntos este mes!" value={challengeForm.title} onChange={e => setChallengeForm(f => ({ ...f, title: e.target.value }))} /></div>
+                      <div><label style={S.label}>Descripción (opcional)</label><input style={S.input} placeholder="Explica el reto al equipo..." value={challengeForm.description} onChange={e => setChallengeForm(f => ({ ...f, description: e.target.value }))} /></div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                        <div><label style={S.label}>Objetivo (puntos) *</label><input style={S.input} type="number" min="1" placeholder="Ej: 300" value={challengeForm.targetPts} onChange={e => setChallengeForm(f => ({ ...f, targetPts: e.target.value }))} /></div>
+                        <div><label style={S.label}>Fecha límite *</label><input style={S.input} type="date" value={challengeForm.deadline} onChange={e => setChallengeForm(f => ({ ...f, deadline: e.target.value }))} /></div>
+                      </div>
+                      <div><label style={S.label}>Premio 🎁</label><input style={S.input} placeholder="Ej: Viernes de salida anticipada, Pizza para todos..." value={challengeForm.prize} onChange={e => setChallengeForm(f => ({ ...f, prize: e.target.value }))} /></div>
+                      {challengeMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: "#FEF3C7", color: "#92400E" }}>{challengeMsg}</div>}
+                      <div style={{ display: "flex", gap: "10px" }}>
+                        <button style={S.btnSecondary} onClick={() => setShowChallengeForm(false)}>Cancelar</button>
+                        <button style={S.btnPrimary} onClick={handleSaveChallenge}>🚀 Lanzar reto</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
 
             </div>
           </div>
@@ -1072,8 +1626,8 @@
                     <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "6px" }}>Paso 3 — Invita a tu equipo</div>
                     <div style={{ fontSize: "13px", color: C.muted, marginBottom: "20px" }}>Añade los emails de tu equipo y compárteles el enlace de la app para que se registren.</div>
                     <div style={{ padding: "12px 16px", borderRadius: "8px", background: `${C.teal}10`, border: `1px solid ${C.teal}30`, marginBottom: "16px" }}>
-                      <div style={{ fontSize: "12px", color: C.muted, marginBottom: "4px" }}>Enlace de registro:</div>
-                      <div style={{ fontSize: "13px", fontWeight: "600", color: C.teal, wordBreak: "break-all" }}>{window.location.href}</div>
+                      <div style={{ fontSize: "12px", color: C.muted, marginBottom: "4px" }}>Enlace de registro para tu equipo:</div>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: C.teal, wordBreak: "break-all" }}>{`${window.location.origin}${window.location.pathname}?invite=${company?.invite_token || ""}`}</div>
                     </div>
                     <div style={{ display: "flex", gap: "10px" }}>
                       <input style={{ ...S.input, flex: 1 }} type="email" placeholder="email@empresa.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
@@ -1109,8 +1663,20 @@
               <div style={S.modal}>
                 <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "20px" }}>✏️ Editar logro</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div>
+                    <label style={S.label}>Icono</label>
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <button onClick={() => setShowPickerEdit(v => !v)} style={{ width: "48px", height: "48px", borderRadius: "10px", border: `2px solid ${C.teal}`, background: "#fff", cursor: "pointer", fontSize: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>{editCatalogItem.icon || "⭐"}</button>
+                      {showPickerEdit && (
+                        <div style={{ position: "absolute", top: "54px", left: 0, zIndex: 500, background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", flexWrap: "wrap", gap: "4px", width: "240px" }}>
+                          {["🎓","🤝","💡","✅","⚡","🔧","🏆","🎯","🌟","🔥","💪","📚","🎨","🛠️","📊","🚀","👏","💰","🎁","⭐","🏅","🎖️","📈","🔑"].map(em => (
+                            <button key={em} onClick={() => { setEditCatalogItem(i => ({ ...i, icon: em })); setShowPickerEdit(false); }} style={{ width: "36px", height: "36px", borderRadius: "8px", border: `1.5px solid ${editCatalogItem.icon === em ? C.teal : "transparent"}`, background: editCatalogItem.icon === em ? `${C.teal}15` : "#F9FAFB", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>{em}</button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                   <div style={{ display: "flex", gap: "10px" }}>
-                    <div style={{ width: "80px" }}><label style={S.label}>Icono</label><input style={S.input} value={editCatalogItem.icon} onChange={e => setEditCatalogItem(i => ({ ...i, icon: e.target.value }))} /></div>
                     <div style={{ flex: 1 }}><label style={S.label}>Nombre</label><input style={S.input} value={editCatalogItem.label} onChange={e => setEditCatalogItem(i => ({ ...i, label: e.target.value }))} /></div>
                     <div style={{ width: "90px" }}><label style={S.label}>Puntos</label><input style={S.input} type="number" min="1" value={editCatalogItem.pts} onChange={e => setEditCatalogItem(i => ({ ...i, pts: e.target.value }))} /></div>
                   </div>
