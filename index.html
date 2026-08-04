@@ -157,6 +157,13 @@
       const [companyForm, setCompanyForm] = useState({ name: "", logo: "" });
       const [companyMsg, setCompanyMsg] = useState("");
       const logoInputRef = useRef(null);
+      const [editCatalogItem, setEditCatalogItem] = useState(null);
+      const [onboardingStep, setOnboardingStep] = useState(0);
+      const [showOnboarding, setShowOnboarding] = useState(false);
+      const [inviteEmail, setInviteEmail] = useState("");
+      const [inviteMsg, setInviteMsg] = useState("");
+      const [invitations, setInvitations] = useState([]);
+      const [validationComment, setValidationComment] = useState({});
 
       useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -175,7 +182,7 @@
       useEffect(() => {
         if (profile) {
           loadRecords(); loadProfiles(); loadHistory(); loadCatalog();
-          loadPrizes(); loadNotifications(); loadDepartments(); loadCompany();
+          loadPrizes(); loadNotifications(); loadDepartments(); loadCompany(); loadInvitations(); checkOnboarding();
         }
       }, [profile]);
 
@@ -220,6 +227,46 @@
         if (!session) return;
         const { data } = await supabase.from("notifications").select("*").eq("user_id", session.user.id).order("created_at", { ascending: false }).limit(20);
         setNotifications(data || []);
+      }
+      async function loadInvitations() {
+        const { data } = await supabase.from("invitations").select("*").order("created_at", { ascending: false });
+        setInvitations(data || []);
+      }
+      async function checkOnboarding() {
+        const { data: comp } = await supabase.from("company_settings").select("id").limit(1).single();
+        const { data: depts } = await supabase.from("departments").select("id").limit(1);
+        const { data: profs } = await supabase.from("profiles").select("id").eq("role", "user").limit(1);
+        const done = comp && depts && depts.length > 0 && profs && profs.length > 0;
+        if (!done) setShowOnboarding(true);
+      }
+      async function handleSendInvite() {
+        if (!inviteEmail.trim()) return;
+        const existing = invitations.find(i => i.email === inviteEmail.trim());
+        if (existing) { setInviteMsg("⚠️ Ya existe una invitación para ese email."); setTimeout(() => setInviteMsg(""), 3000); return; }
+        await supabase.from("invitations").insert({ email: inviteEmail.trim(), status: "pending" });
+        setInviteEmail(""); await loadInvitations();
+        setInviteMsg("✅ Invitación registrada. Comparte el enlace de registro con tu equipo.");
+        setTimeout(() => setInviteMsg(""), 4000);
+      }
+      async function handleDeleteInvitation(id) {
+        await supabase.from("invitations").delete().eq("id", id);
+        await loadInvitations();
+      }
+      async function handleEditCatalogItem() {
+        if (!editCatalogItem?.label.trim() || !editCatalogItem?.pts) return;
+        await supabase.from("catalog_items").update({ label: editCatalogItem.label, pts: parseInt(editCatalogItem.pts), icon: editCatalogItem.icon }).eq("id", editCatalogItem.id);
+        setEditCatalogItem(null); await loadCatalog();
+      }
+      async function handleValidateWithComment(id) {
+        const comment = validationComment[id] || "";
+        await supabase.from("records").update({ validated: true, manager_comment: comment }).eq("id", id);
+        const rec = records.find(r => r.id === id);
+        if (rec) {
+          const msg = comment ? `✅ Tu logro "${rec.description}" fue validado — +${rec.pts} pts. Comentario: ${comment}` : `✅ Tu logro "${rec.description}" ha sido validado — +${rec.pts} pts`;
+          await supabase.from("notifications").insert({ user_id: rec.user_id, message: msg, read: false });
+        }
+        setValidationComment(vc => { const n = {...vc}; delete n[id]; return n; });
+        await loadRecords();
       }
       async function markAllRead() {
         await supabase.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false);
@@ -793,7 +840,12 @@
                               <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
                               <td style={S.td}>{r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}</td>
                               <td style={{ ...S.td, display: "flex", gap: "6px" }}>
-                                {!r.validated && <button style={S.btnGhost(C.teal)} onClick={() => handleValidate(r.id)}>✓ Validar</button>}
+                                {!r.validated && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                                <input style={{ ...S.input, fontSize: "12px", padding: "5px 10px" }} placeholder="Comentario (opcional)..." value={validationComment[r.id] || ""} onChange={e => setValidationComment(vc => ({ ...vc, [r.id]: e.target.value }))} />
+                                <button style={S.btnGhost(C.teal)} onClick={() => handleValidateWithComment(r.id)}>✓ Validar</button>
+                              </div>
+                            )}
                                 <button style={S.btnGhost("#F59E0B")} onClick={() => setEditRecord({ ...r })}>✏️</button>
                                 <button style={S.btnDanger} onClick={() => handleDelete(r.id)}>🗑</button>
                               </td>
@@ -840,6 +892,35 @@
                         ))}
                       </tbody>
                     </table>
+                  </div>
+
+                  <div style={S.card}>
+                    <div style={S.sectionLabel}>Invitaciones</div>
+                    <div style={{ fontSize: "13px", color: C.muted, marginBottom: "16px" }}>
+                      Registra los emails de tu equipo. Compárteles este enlace para que se registren: <strong style={{ color: C.teal }}>{window.location.href}</strong>
+                    </div>
+                    <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
+                      <input style={{ ...S.input, flex: 1 }} type="email" placeholder="email@empresa.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSendInvite()} />
+                      <button style={S.btnPrimary} onClick={handleSendInvite}>Añadir</button>
+                    </div>
+                    {inviteMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: inviteMsg.startsWith("✅") ? "#D1FAE5" : "#FEF3C7", color: inviteMsg.startsWith("✅") ? "#065F46" : "#92400E", marginBottom: "12px" }}>{inviteMsg}</div>}
+                    {invitations.length > 0 && (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                        {invitations.map(inv => {
+                          const isRegistered = profiles.find(p => p.email === inv.email);
+                          return (
+                            <div key={inv.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "8px", background: "#F9FAFB", border: `1px solid ${C.border}` }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                <span style={{ fontSize: "14px" }}>{inv.email}</span>
+                                {isRegistered ? <span style={S.badge("#059669","#D1FAE5")}>✓ Registrado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}
+                              </div>
+                              <button style={S.btnDanger} onClick={() => handleDeleteInvitation(inv.id)}>Eliminar</button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {invitations.length === 0 && <div style={{ color: C.muted, fontSize: "13px" }}>Sin invitaciones registradas aún</div>}
                   </div>
                 </>
               )}
@@ -896,8 +977,9 @@
                             <span style={{ fontSize: "22px" }}>{item.icon}</span>
                             <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
                           </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                             <span style={{ fontWeight: "800", color: C.teal, fontSize: "15px" }}>{item.pts} pts</span>
+                            <button style={S.btnGhost(C.teal)} onClick={() => setEditCatalogItem({ ...item })}>✏️</button>
                             <button style={S.btnDanger} onClick={() => handleDeleteCatalogItem(item.id)}>Eliminar</button>
                           </div>
                         </div>
@@ -948,6 +1030,98 @@
 
             </div>
           </div>
+
+          {/* ── ONBOARDING ── */}
+          {showOnboarding && profile?.role === "admin" && (
+            <div style={S.overlay}>
+              <div style={{ ...S.modal, maxWidth: "560px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                  <div>
+                    <div style={{ fontSize: "20px", fontWeight: "900" }}>¡Bienvenido a Meriti! 🎉</div>
+                    <div style={{ fontSize: "13px", color: C.muted, marginTop: "4px" }}>Configura tu espacio en 3 pasos</div>
+                  </div>
+                  <button onClick={() => setShowOnboarding(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "20px" }}>×</button>
+                </div>
+
+                {/* Steps */}
+                <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
+                  {[0,1,2].map(s => (
+                    <div key={s} style={{ flex: 1, height: "4px", borderRadius: "2px", background: s <= onboardingStep ? C.teal : C.border, transition: "background 0.3s" }} />
+                  ))}
+                </div>
+
+                {onboardingStep === 0 && (
+                  <div>
+                    <div style={{ fontSize: "36px", marginBottom: "12px" }}>🏢</div>
+                    <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "6px" }}>Paso 1 — Nombra tu empresa</div>
+                    <div style={{ fontSize: "13px", color: C.muted, marginBottom: "20px" }}>Este nombre aparecerá en el sidebar de la app</div>
+                    <input style={S.input} placeholder="Nombre de tu empresa..." value={companyForm.name} onChange={e => setCompanyForm(f => ({ ...f, name: e.target.value }))} />
+                  </div>
+                )}
+                {onboardingStep === 1 && (
+                  <div>
+                    <div style={{ fontSize: "36px", marginBottom: "12px" }}>🏗️</div>
+                    <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "6px" }}>Paso 2 — Crea tu primer departamento</div>
+                    <div style={{ fontSize: "13px", color: C.muted, marginBottom: "20px" }}>Puedes crear más después. Si no tienes departamentos, puedes saltarte este paso.</div>
+                    <input style={S.input} placeholder="Ej: Ventas, Marketing, Operaciones..." value={newDept} onChange={e => setNewDept(e.target.value)} />
+                  </div>
+                )}
+                {onboardingStep === 2 && (
+                  <div>
+                    <div style={{ fontSize: "36px", marginBottom: "12px" }}>👥</div>
+                    <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "6px" }}>Paso 3 — Invita a tu equipo</div>
+                    <div style={{ fontSize: "13px", color: C.muted, marginBottom: "20px" }}>Añade los emails de tu equipo y compárteles el enlace de la app para que se registren.</div>
+                    <div style={{ padding: "12px 16px", borderRadius: "8px", background: `${C.teal}10`, border: `1px solid ${C.teal}30`, marginBottom: "16px" }}>
+                      <div style={{ fontSize: "12px", color: C.muted, marginBottom: "4px" }}>Enlace de registro:</div>
+                      <div style={{ fontSize: "13px", fontWeight: "600", color: C.teal, wordBreak: "break-all" }}>{window.location.href}</div>
+                    </div>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <input style={{ ...S.input, flex: 1 }} type="email" placeholder="email@empresa.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+                      <button style={S.btnPrimary} onClick={handleSendInvite}>Añadir</button>
+                    </div>
+                    {inviteMsg && <div style={{ fontSize: "12px", color: "#059669", marginTop: "8px" }}>{inviteMsg}</div>}
+                    {invitations.length > 0 && <div style={{ fontSize: "13px", color: C.muted, marginTop: "8px" }}>{invitations.length} email(s) registrados ✓</div>}
+                  </div>
+                )}
+
+                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "28px" }}>
+                  {onboardingStep > 0 && <button style={S.btnSecondary} onClick={() => setOnboardingStep(s => s - 1)}>← Atrás</button>}
+                  {onboardingStep < 2 && (
+                    <button style={S.btnPrimary} onClick={async () => {
+                      if (onboardingStep === 0 && companyForm.name.trim()) await handleSaveCompany();
+                      if (onboardingStep === 1 && newDept.trim()) await handleAddDept();
+                      setOnboardingStep(s => s + 1);
+                    }}>
+                      {onboardingStep === 1 && !newDept.trim() ? "Saltar →" : "Siguiente →"}
+                    </button>
+                  )}
+                  {onboardingStep === 2 && (
+                    <button style={S.btnPrimary} onClick={() => setShowOnboarding(false)}>Empezar →</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── MODAL EDITAR CATÁLOGO ── */}
+          {editCatalogItem && (
+            <div style={S.overlay}>
+              <div style={S.modal}>
+                <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "20px" }}>✏️ Editar logro</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    <div style={{ width: "80px" }}><label style={S.label}>Icono</label><input style={S.input} value={editCatalogItem.icon} onChange={e => setEditCatalogItem(i => ({ ...i, icon: e.target.value }))} /></div>
+                    <div style={{ flex: 1 }}><label style={S.label}>Nombre</label><input style={S.input} value={editCatalogItem.label} onChange={e => setEditCatalogItem(i => ({ ...i, label: e.target.value }))} /></div>
+                    <div style={{ width: "90px" }}><label style={S.label}>Puntos</label><input style={S.input} type="number" min="1" value={editCatalogItem.pts} onChange={e => setEditCatalogItem(i => ({ ...i, pts: e.target.value }))} /></div>
+                  </div>
+                  <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+                    <button style={S.btnSecondary} onClick={() => setEditCatalogItem(null)}>Cancelar</button>
+                    <button style={S.btnPrimary} onClick={handleEditCatalogItem}>Guardar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ── MODAL EDITAR ── */}
           {editRecord && (
