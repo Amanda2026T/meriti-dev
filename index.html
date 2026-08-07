@@ -22,14 +22,12 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-  
+
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
-
     const SUPABASE_URL = "https://zuuintnjucfptemiqnoa.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dWludG5qdWNmcHRlbWlxbm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3Nzc1NjIsImV4cCI6MjEwMTM1MzU2Mn0.p5pxg9b6Ll4DXPEUDxfa-w2Etz-s-otI6R7BYKYupVo";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const DEFAULT_CATALOG = [
       { label: "Curso publicado en fecha", pts: 10, icon: "🎓" },
       { label: "Colaboración con otro departamento", pts: 4, icon: "🤝" },
@@ -38,7 +36,6 @@
       { label: "Entrega antes de tiempo", pts: 3, icon: "⚡" },
       { label: "Resolución de incidencia", pts: 1, icon: "🔧" },
     ];
-
     // BRAND_COLORS set dynamically after company loads
     const LEVELS = [
       { min: 0,   max: 49,  label: "Rookie",  icon: "🌱", color: "#6B7280" },
@@ -47,13 +44,11 @@
       { min: 300, max: Infinity, label: "Leyenda", icon: "🏆", color: "#FFCF2B" },
     ];
     function getLevel(totalPts) { return LEVELS.find(l => totalPts >= l.min && totalPts <= l.max) || LEVELS[0]; }
-
     const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
     const now = new Date();
     const monthKey = `${now.getFullYear()}-${now.getMonth()}`;
     const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     const isLastDay = now.getDate() === lastDayOfMonth;
-
     // ── STYLES ──────────────────────────────────────────────────────────────
     const LIGHT = {
       teal: "#00C2AD", green: "#00DD99", yellow: "#FFCF2B",
@@ -67,8 +62,6 @@
       dark: "#e8f5e9", text: "#f0fdf4", muted: "#9CA3AF",
       bg: "#061a0e", card: "#0a2015", border: "#1a3a25",
     };
-
-
     // ── NAV ITEM ─────────────────────────────────────────────────────────────
     function NavItem({ icon, label, active, onClick, badge, teal, muted }) {
       return (
@@ -79,7 +72,6 @@
         </button>
       );
     }
-
     // ── MAIN APP ─────────────────────────────────────────────────────────────
     function App() {
       const [session, setSession] = useState(null);
@@ -91,7 +83,6 @@
       const [authForm, setAuthForm] = useState({ email: "", password: "", name: "" });
       const [authError, setAuthError] = useState("");
       const [authLoading, setAuthLoading] = useState(false);
-
       // Data
       const [records, setRecords] = useState([]);
       const [profiles, setProfiles] = useState([]);
@@ -100,7 +91,6 @@
       const [prizes, setPrizes] = useState([]);
       const [departments, setDepartments] = useState([]);
       const [notifications, setNotifications] = useState([]);
-
       // UI state
       const [viewingMonthIndex, setViewingMonthIndex] = useState(0);
       const [selectedDept, setSelectedDept] = useState("all");
@@ -109,14 +99,12 @@
       const [editRecord, setEditRecord] = useState(null);
       const [closingMonth, setClosingMonth] = useState(false);
       const [showNotifs, setShowNotifs] = useState(false);
-
       // Roulette
       const [showRoulette, setShowRoulette] = useState(false);
       const [spinning, setSpinning] = useState(false);
       const [spinDeg, setSpinDeg] = useState(0);
       const [wonPrize, setWonPrize] = useState(null);
       const [currentDeg, setCurrentDeg] = useState(0);
-
       // Admin forms
       const [newCatalogItem, setNewCatalogItem] = useState({ label: "", pts: "", icon: "⭐" });
       const [newPrize, setNewPrize] = useState("");
@@ -141,12 +129,10 @@
       const [inviteMsg, setInviteMsg] = useState("");
       const [invitations, setInvitations] = useState([]);
       const [validationComment, setValidationComment] = useState({});
-
       useEffect(() => {
         document.body.classList.toggle("dark", darkMode);
         localStorage.setItem("meriti_dark", darkMode);
       }, [darkMode]);
-
       useEffect(() => {
         supabase.auth.getSession().then(({ data: { session } }) => {
           setSession(session);
@@ -160,41 +146,45 @@
         });
         return () => subscription.unsubscribe();
       }, []);
-
       useEffect(() => {
         if (profile) {
           loadRecords(); loadProfiles(); loadHistory(); loadCatalog();
           loadPrizes(); loadNotifications(); loadDepartments(); loadCompany(); loadInvitations(); checkOnboarding(); loadChallenge(); loadLikes();
         }
       }, [profile]);
-
       // ── DATA LOADERS ──────────────────────────────────────────────────────
       async function loadProfile(uid) {
         const { data } = await supabase.from("profiles").select("*").eq("id", uid).single();
         setProfile(data); setLoading(false);
       }
       async function loadRecords() {
-        const { data } = await supabase.from("records").select("*").order("created_at", { ascending: false });
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("records").select("*").eq("company_id", profile.company_id).order("created_at", { ascending: false });
         setRecords(data || []);
       }
       async function loadProfiles() {
-        const { data } = await supabase.from("profiles").select("*").order("name");
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("profiles").select("*").eq("company_id", profile.company_id).order("name");
         setProfiles(data || []);
       }
       async function loadHistory() {
-        const { data } = await supabase.from("month_history").select("*").order("closed_at", { ascending: false });
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("month_history").select("*").eq("company_id", profile.company_id).order("closed_at", { ascending: false });
         setHistory(data || []);
       }
       async function loadCatalog() {
-        const { data } = await supabase.from("catalog_items").select("*").order("created_at");
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("catalog_items").select("*").eq("company_id", profile.company_id).order("created_at");
         setCatalog(data || []);
       }
       async function loadPrizes() {
-        const { data } = await supabase.from("prizes").select("*").order("created_at");
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("prizes").select("*").eq("company_id", profile.company_id).order("created_at");
         setPrizes(data || []);
       }
       async function loadDepartments() {
-        const { data } = await supabase.from("departments").select("*").order("name");
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("departments").select("*").eq("company_id", profile.company_id).order("name");
         setDepartments(data || []);
       }
       async function loadCompany() {
@@ -217,23 +207,27 @@
         setNotifications(data || []);
       }
       async function loadInvitations() {
-        const { data } = await supabase.from("invitations").select("*").order("created_at", { ascending: false });
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("invitations").select("*").eq("company_id", profile.company_id).order("created_at", { ascending: false });
         setInvitations(data || []);
       }
       async function checkOnboarding() {
-        const { data: comp } = await supabase.from("company_settings").select("id").limit(1).single();
-        const { data: depts } = await supabase.from("departments").select("id").limit(1);
-        const { data: profs } = await supabase.from("profiles").select("id").eq("role", "user").limit(1);
-        const done = comp && depts && depts.length > 0 && profs && profs.length > 0;
+        if (!profile?.company_id) return;
+        const { data: depts } = await supabase.from("departments").select("id").eq("company_id", profile.company_id).limit(1);
+        const { data: profs } = await supabase.from("profiles").select("id").eq("role", "user").eq("company_id", profile.company_id).limit(1);
+        const companyHasName = company?.name && company.name !== "Mi Empresa";
+        const done = companyHasName && depts && depts.length > 0 && profs && profs.length > 0;
         if (!done) setShowOnboarding(true);
       }
       async function loadChallenge() {
-        const { data } = await supabase.from("challenges").select("*").eq("active", true).limit(1).single();
+        if (!profile?.company_id) return;
+        const { data } = await supabase.from("challenges").select("*").eq("active", true).eq("company_id", profile.company_id).limit(1).single();
         if (data) setChallenge(data);
         else setChallenge(null);
       }
       async function loadLikes() {
-        const { data: allLikes } = await supabase.from("likes").select("*");
+        if (!profile?.company_id) return;
+        const { data: allLikes } = await supabase.from("likes").select("*").eq("company_id", profile.company_id);
         const likeCounts = {};
         (allLikes || []).forEach(l => { likeCounts[l.to_user_id] = (likeCounts[l.to_user_id] || 0) + 1; });
         setLikes(likeCounts);
@@ -250,7 +244,7 @@
       }
       async function handleSaveChallenge() {
         if (!challengeForm.title.trim() || !challengeForm.targetPts || !challengeForm.deadline) { setChallengeMsg("⚠️ Completa título, objetivo y fecha límite."); return; }
-        await supabase.from("challenges").update({ active: false }).eq("active", true);
+        await supabase.from("challenges").update({ active: false }).eq("active", true).eq("company_id", companyId);
         await supabase.from("challenges").insert({ title: challengeForm.title, description: challengeForm.description, target_pts: parseInt(challengeForm.targetPts), prize: challengeForm.prize, deadline: challengeForm.deadline, active: true, month: monthKey, company_id: companyId });
         setChallengeForm({ title: "", description: "", targetPts: "", prize: "", deadline: "" });
         setShowChallengeForm(false);
@@ -292,7 +286,6 @@
         }
         XLSX.writeFile(wb, `Meriti_${MONTH_NAMES[now.getMonth()]}_${now.getFullYear()}.xlsx`);
       }
-
       async function handleSendInvite() {
         if (!inviteEmail.trim()) return;
         const existing = invitations.find(i => i.email === inviteEmail.trim());
@@ -329,7 +322,6 @@
         await supabase.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false);
         await loadNotifications();
       }
-
       // ── AUTH ──────────────────────────────────────────────────────────────
       async function handleLogin() {
         setAuthLoading(true); setAuthError("");
@@ -352,16 +344,11 @@
         setAuthLoading(false);
       }
       async function handleLogout() { await supabase.auth.signOut(); setView("dashboard"); }
-
       // ── COMPANY ───────────────────────────────────────────────────────────
       async function handleSaveCompany() {
-        const existing = await supabase.from("company_settings").select("id").limit(1).single();
+        if (!profile?.company_id) return;
         const payload = { name: companyForm.name, logo: companyForm.logo, color1: companyForm.color1, color2: companyForm.color2, color3: companyForm.color3 };
-        if (existing.data) {
-          await supabase.from("company_settings").update(payload).eq("id", existing.data.id);
-        } else {
-          await supabase.from("company_settings").insert(payload);
-        }
+        await supabase.from("company_settings").update(payload).eq("id", profile.company_id);
         await loadCompany();
         setCompanyMsg("✅ Cambios guardados.");
         setTimeout(() => setCompanyMsg(""), 3000);
@@ -373,7 +360,6 @@
         reader.onload = (ev) => setCompanyForm(f => ({ ...f, logo: ev.target.result }));
         reader.readAsDataURL(file);
       }
-
       // ── DEPARTMENTS ───────────────────────────────────────────────────────
       async function handleAddDept() {
         if (!newDept.trim()) return;
@@ -389,7 +375,6 @@
         await supabase.from("departments").delete().eq("id", id);
         await loadDepartments();
       }
-
       // ── CATALOG ───────────────────────────────────────────────────────────
       async function handleAddCatalogItem() {
         if (!newCatalogItem.label.trim() || !newCatalogItem.pts) return;
@@ -399,7 +384,6 @@
       async function handleDeleteCatalogItem(id) {
         await supabase.from("catalog_items").delete().eq("id", id); await loadCatalog();
       }
-
       // ── PRIZES ────────────────────────────────────────────────────────────
       async function handleAddPrize() {
         if (!newPrize.trim()) return;
@@ -409,7 +393,6 @@
       async function handleDeletePrize(id) {
         await supabase.from("prizes").delete().eq("id", id); await loadPrizes();
       }
-
       // ── RECORDS ───────────────────────────────────────────────────────────
       async function handleSubmit() {
         if (!form.catalogId || !form.date || !form.desc.trim()) { setFormMsg("⚠️ Completa todos los campos."); return; }
@@ -442,7 +425,6 @@
         await supabase.from("month_history").insert({ month: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, winner: scores[0]?.name || "—", scores, company_id: companyId });
         await loadHistory(); setClosingMonth(false); setView("dashboard");
       }
-
       // ── ROULETTE ──────────────────────────────────────────────────────────
       function handleSpin() {
         if (spinning || prizes.length === 0) return;
@@ -453,14 +435,12 @@
         setSpinDeg(targetDeg); setCurrentDeg(targetDeg % 360);
         setTimeout(() => { setSpinning(false); setWonPrize(prizes[randomSlice]); }, 4500);
       }
-
       // ── COMPUTED ──────────────────────────────────────────────────────────
       const companyId = profile?.company_id;
       const brandColor1 = company?.color1 || "#00C2AD";
       const brandColor2 = company?.color2 || "#00DD99";
       const brandColor3 = company?.color3 || "#FFCF2B";
       const BRAND_COLORS = [brandColor1, brandColor2, brandColor3, "#6BF279", "#0096AD", "#99F999"];
-
       const C = darkMode ? {
         ...DARK,
         teal: brandColor1,
@@ -504,16 +484,13 @@
         loginCard: { background: C.card, borderRadius: "20px", padding: "48px", width: "100%", maxWidth: "420px", boxShadow: "0 24px 80px rgba(0,0,0,0.3)" },
         spinner: { display: "inline-block", width: "20px", height: "20px", border: `2px solid ${C.border}`, borderTop: `2px solid ${C.teal}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" },
       };
-
       const teamProfiles = profiles.filter(p => p.role === "user");
       const allNames = teamProfiles.map(p => p.name);
       const getColor = (name) => BRAND_COLORS[([...allNames].sort().indexOf(name)) % BRAND_COLORS.length] || C.teal;
-
       const filteredProfiles = selectedDept === "all" ? teamProfiles : teamProfiles.filter(p => p.dept_id === selectedDept);
       const currentPoints = filteredProfiles.map(p => ({ ...p, pts: records.filter(r => r.user_id === p.id && r.month === monthKey && r.validated).reduce((a, b) => a + b.pts, 0) })).sort((a, b) => b.pts - a.pts);
       const maxPts = Math.max(...currentPoints.map(u => u.pts), 1);
       const winner = currentPoints[0];
-
       const allMonths = [
         { key: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, isCurrent: true },
         ...history.map(h => ({ key: h.month, label: h.label, isCurrent: false, histData: h }))
@@ -529,17 +506,14 @@
         dRecords = records.filter(r => r.month === cmd.histData?.month);
       }
       const dMax = Math.max(...dPoints.map(u => u.pts), 1);
-
       const visibleRecords = profile?.role === "admin" ? records : records.filter(r => r.user_id === session?.user?.id);
       const getTotalPts = (userId) => records.filter(r => r.user_id === userId && r.validated).reduce((a, b) => a + b.pts, 0);
       const challengeCurrentPts = challenge ? records.filter(r => r.month === challenge.month && r.validated).reduce((a, b) => a + b.pts, 0) : 0;
       const challengeProgress = challenge ? Math.min(Math.round((challengeCurrentPts / challenge.target_pts) * 100), 100) : 0;
       const unreadCount = notifications.filter(n => !n.read).length;
       const pendingCount = records.filter(r => !r.validated).length;
-
       const companyName = company?.name || "Meriti";
       const companyLogo = company?.logo || null;
-
       // ── LOADING / AUTH ────────────────────────────────────────────────────
       if (loading) return (
         <div style={S.loginWrap}><div style={{ textAlign: "center" }}>
@@ -548,7 +522,6 @@
           <div style={{ marginTop: "16px", color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>Cargando...</div>
         </div></div>
       );
-
       if (!session || !profile) return (
         <div style={S.loginWrap}>
           <div style={S.loginCard}>
@@ -576,7 +549,6 @@
           </div>
         </div>
       );
-
       // ── MAIN LAYOUT ───────────────────────────────────────────────────────
       return (
         <div style={S.app}>
@@ -591,7 +563,6 @@
                 </div>
               </div>
             </div>
-
             <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
               <div style={S.sectionLabel} className="px-2">Principal</div>
               <NavItem teal={C.teal} muted={C.muted} icon="📊" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
@@ -614,7 +585,6 @@
                 </>
               )}
             </nav>
-
             <div style={{ padding: "12px 8px", borderTop: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "8px", background: darkMode ? "#0d2a18" : "#F9FAFB" }}>
                 <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "13px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
@@ -626,7 +596,6 @@
               </div>
             </div>
           </aside>
-
           {/* MAIN */}
           <div style={S.mainContent}>
             {/* TOPBAR */}
@@ -669,9 +638,7 @@
                 </div>
               </div>
             </header>
-
             <div style={S.page}>
-
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
@@ -686,7 +653,6 @@
                     <button onClick={() => setViewingMonthIndex(i => Math.max(i - 1, 0))} disabled={viewingMonthIndex === 0}
                       style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex === 0 ? 0.3 : 1 }}>Siguiente →</button>
                   </div>
-
                   {/* Department filter */}
                   {isCurrent && departments.length > 0 && (
                     <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
@@ -694,7 +660,6 @@
                       {departments.map(d => <button key={d.id} onClick={() => setSelectedDept(d.id)} style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${selectedDept === d.id ? C.teal : C.border}`, background: selectedDept === d.id ? `${C.teal}15` : "#fff", color: selectedDept === d.id ? C.teal : C.muted, fontSize: "13px", fontWeight: "600", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{d.name}</button>)}
                     </div>
                   )}
-
                   {/* Last day banner */}
                   {isCurrent && isLastDay && winner && profile.role === "admin" && (
                     <div style={{ background: `linear-gradient(135deg, ${C.yellow}20, ${C.yellow}08)`, border: `1px solid ${C.yellow}50`, borderRadius: "12px", padding: "16px 20px", display: "flex", alignItems: "center", gap: "16px", marginBottom: "20px" }}>
@@ -706,7 +671,6 @@
                       <button style={S.btnYellow} onClick={() => setClosingMonth(true)}>Cerrar mes →</button>
                     </div>
                   )}
-
                   {/* Challenge banner */}
                   {challenge && isCurrent && (
                     <div style={{ background: `linear-gradient(135deg, ${C.teal}15, ${C.green}08)`, border: `1px solid ${C.teal}30`, borderRadius: "12px", padding: "20px 24px", marginBottom: "20px" }}>
@@ -734,7 +698,6 @@
                       </div>
                     </div>
                   )}
-
                   {/* Leaderboard */}
                   <div style={S.card}>
                     <div style={S.sectionLabel}>Clasificación</div>
@@ -780,7 +743,6 @@
                       </div>
                     )}
                   </div>
-
                   {/* Recent records */}
                   <div style={S.card}>
                     <div style={S.sectionLabel}>{isCurrent ? "Últimos logros" : "Logros del mes"}</div>
@@ -807,7 +769,6 @@
                   </div>
                 </>
               )}
-
               {/* ── REGISTRAR ── */}
               {view === "registrar" && profile.role !== "admin" && (
                 <div style={{ maxWidth: "560px" }}>
@@ -843,7 +804,6 @@
                   </div>
                 </div>
               )}
-
               {/* ── PERFIL ── */}
               {view === "perfil" && profile.role !== "admin" && (() => {
                 const myRecords = records.filter(r => r.user_id === session.user.id);
@@ -852,7 +812,6 @@
                 const thisMonthPts = myValidated.filter(r => r.month === monthKey).reduce((a, b) => a + b.pts, 0);
                 const myRank = currentPoints.findIndex(p => p.id === profile.id) + 1;
                 const color = getColor(profile.name);
-
                 // Points by month (last 6 months)
                 const last6 = [];
                 for (let i = 5; i >= 0; i--) {
@@ -863,15 +822,12 @@
                   last6.push({ label, pts, key });
                 }
                 const maxBar = Math.max(...last6.map(m => m.pts), 1);
-
                 // Most used catalog items
                 const itemCount = {};
                 myValidated.forEach(r => { itemCount[r.catalog_id] = (itemCount[r.catalog_id] || 0) + 1; });
                 const topItems = Object.entries(itemCount).sort((a,b) => b[1]-a[1]).slice(0,3).map(([id, count]) => ({ cat: catalog.find(c => c.id === id), count }));
-
                 // Historical ranking positions
                 const historicalWins = history.filter(h => h.winner === profile.name).length;
-
                 return (
                   <>
                     {/* Header */}
@@ -885,7 +841,6 @@
                         )}
                       </div>
                     </div>
-
                     {/* Stat cards */}
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px", marginBottom: "24px" }}>
                       {[
@@ -901,7 +856,6 @@
                         </div>
                       ))}
                     </div>
-
                     {/* Evolution chart */}
                     <div style={S.card}>
                       <div style={S.sectionLabel}>Evolución de puntos — últimos 6 meses</div>
@@ -917,7 +871,6 @@
                         ))}
                       </div>
                     </div>
-
                     {/* Top logros */}
                     {topItems.length > 0 && (
                       <div style={S.card}>
@@ -935,7 +888,6 @@
                         </div>
                       </div>
                     )}
-
                     {/* Recent activity */}
                     <div style={S.card}>
                       <div style={S.sectionLabel}>Actividad reciente</div>
@@ -967,7 +919,6 @@
                   </>
                 );
               })()}
-
               {/* ── HISTORIAL ── */}
               {view === "historial" && (
                 <>
@@ -1016,7 +967,6 @@
                   )}
                 </>
               )}
-
               {/* ── RULETA ── */}
               {view === "ruleta" && (
                 <div style={{ maxWidth: "600px" }}>
@@ -1073,7 +1023,6 @@
                             <text x="200" y="200" textAnchor="middle" dominantBaseline="central" fill={C.teal} fontWeight="900" fontSize="14" fontFamily="Plus Jakarta Sans, sans-serif">★</text>
                           </svg>
                         </div>
-
                         {wonPrize && (
                           <div style={{ padding: "20px 28px", borderRadius: "12px", background: `linear-gradient(135deg, ${C.yellow}20, ${C.green}10)`, border: `1px solid ${C.yellow}50`, textAlign: "center", width: "100%" }}>
                             <div style={{ fontSize: "32px", marginBottom: "6px" }}>🎊</div>
@@ -1081,7 +1030,6 @@
                             <div style={{ fontSize: "18px", fontWeight: "600", marginTop: "4px", color: C.text }}>{wonPrize.label}</div>
                           </div>
                         )}
-
                         <div style={{ display: "flex", gap: "10px" }}>
                           {!spinning && <button style={S.btnPrimary} onClick={handleSpin}>{wonPrize ? "🔄 Girar de nuevo" : "🎡 ¡Girar!"}</button>}
                           {spinning && <div style={{ color: C.muted, padding: "10px 20px" }}>Girando... 🌀</div>}
@@ -1109,7 +1057,6 @@
                   )}
                 </div>
               )}
-
               {/* ── VALIDAR ── */}
               {view === "validar" && profile.role === "admin" && (
                 <>
@@ -1150,7 +1097,6 @@
                   </div>
                 </>
               )}
-
               {/* ── EQUIPO ── */}
               {view === "equipo" && profile.role === "admin" && (
                 <>
@@ -1184,7 +1130,6 @@
                       </tbody>
                     </table>
                   </div>
-
                   <div style={S.card}>
                     <div style={S.sectionLabel}>Invitaciones</div>
                     <div style={{ fontSize: "13px", color: C.muted, marginBottom: "16px" }}>
@@ -1219,7 +1164,6 @@
                   </div>
                 </>
               )}
-
               {/* ── DEPARTAMENTOS ── */}
               {view === "departamentos" && profile.role === "admin" && (
                 <>
@@ -1258,7 +1202,6 @@
                   </div>
                 </>
               )}
-
               {/* ── CATALOGO ── */}
               {view === "catalogo" && profile.role === "admin" && (
                 <>
@@ -1304,7 +1247,6 @@
                   </div>
                 </>
               )}
-
               {/* ── EMPRESA ── */}
               {view === "empresa" && profile.role === "admin" && (
                 <>
@@ -1358,7 +1300,6 @@
                       <button style={S.btnPrimary} onClick={handleSaveCompany}>Guardar cambios</button>
                     </div>
                   </div>
-
                   <div style={{ ...S.card, maxWidth: "560px", marginTop: "0" }}>
                     <div style={S.sectionLabel}>Configuración inicial</div>
                     <div style={{ fontSize: "14px", color: C.muted, marginBottom: "16px" }}>Vuelve a ver la guía de configuración paso a paso.</div>
@@ -1366,7 +1307,6 @@
                   </div>
                 </>
               )}
-
             {/* ── ESTADÍSTICAS ── */}
             {view === "stats" && profile.role === "admin" && (() => {
               // Points by month last 6
@@ -1380,25 +1320,21 @@
                 last6.push({ label, pts, count, key });
               }
               const maxBar = Math.max(...last6.map(m => m.pts), 1);
-
               // Top employees all time
               const topEmployees = teamProfiles.map(p => ({
                 ...p,
                 totalPts: records.filter(r => r.user_id === p.id && r.validated).reduce((a,b) => a+b.pts, 0),
                 totalLogros: records.filter(r => r.user_id === p.id && r.validated).length,
               })).sort((a,b) => b.totalPts - a.totalPts);
-
               // Top catalog items
               const itemUsage = {};
               records.filter(r => r.validated).forEach(r => { itemUsage[r.catalog_id] = (itemUsage[r.catalog_id] || 0) + 1; });
               const topItems = Object.entries(itemUsage).sort((a,b) => b[1]-a[1]).slice(0,5).map(([id, count]) => ({ cat: catalog.find(c => c.id === id), count }));
-
               // Summary stats
               const totalValidated = records.filter(r => r.validated).length;
               const totalPending = records.filter(r => !r.validated).length;
               const totalPtsAllTime = records.filter(r => r.validated).reduce((a,b) => a+b.pts, 0);
               const avgPtsPerMonth = last6.reduce((a,b) => a+b.pts, 0) / 6;
-
               return (
                 <>
                   <div style={S.pageTitle}>Estadísticas</div>
@@ -1406,7 +1342,6 @@
                     <div style={S.pageSubtitle}>Resumen de actividad de tu equipo</div>
                     <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
                   </div>
-
                   {/* KPI cards */}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
                     {[
@@ -1422,7 +1357,6 @@
                       </div>
                     ))}
                   </div>
-
                   {/* Evolution chart */}
                   <div style={S.card}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
@@ -1443,7 +1377,6 @@
                     </div>
                     <div style={{ fontSize: "11px", color: C.muted, marginTop: "8px", textAlign: "center" }}>El número dentro de cada barra indica logros registrados ese mes</div>
                   </div>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
                     {/* Top employees */}
                     <div style={S.card}>
@@ -1466,7 +1399,6 @@
                         {topEmployees.length === 0 && <div style={{ color: C.muted, fontSize: "13px" }}>Sin datos aún</div>}
                       </div>
                     </div>
-
                     {/* Top catalog items */}
                     <div style={S.card}>
                       <div style={S.sectionLabel}>Logros más registrados</div>
@@ -1487,7 +1419,6 @@
                       </div>
                     </div>
                   </div>
-
                   {/* Winners history */}
                   {history.length > 0 && (
                     <div style={S.card}>
@@ -1506,13 +1437,11 @@
                 </>
               );
             })()}
-
             {/* ── RETO COLECTIVO ── */}
             {view === "reto" && profile.role === "admin" && (
               <>
                 <div style={S.pageTitle}>Reto Colectivo</div>
                 <div style={S.pageSubtitle}>Lanza un objetivo compartido para motivar a todo el equipo</div>
-
                 {challenge ? (
                   <div style={S.card}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "20px" }}>
@@ -1559,7 +1488,6 @@
                     <button style={S.btnPrimary} onClick={() => setShowChallengeForm(true)}>🚀 Lanzar nuevo reto</button>
                   </div>
                 )}
-
                 {!challenge && showChallengeForm && (
                   <div style={S.card}>
                     <div style={{ fontWeight: "800", fontSize: "17px", marginBottom: "20px" }}>Nuevo reto colectivo</div>
@@ -1581,10 +1509,8 @@
                 )}
               </>
             )}
-
             </div>
           </div>
-
           {/* ── ONBOARDING ── */}
           {showOnboarding && profile?.role === "admin" && (
             <div style={S.overlay}>
@@ -1596,14 +1522,12 @@
                   </div>
                   <button onClick={() => setShowOnboarding(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "20px" }}>×</button>
                 </div>
-
                 {/* Steps */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
                   {[0,1,2].map(s => (
                     <div key={s} style={{ flex: 1, height: "4px", borderRadius: "2px", background: s <= onboardingStep ? C.teal : C.border, transition: "background 0.3s" }} />
                   ))}
                 </div>
-
                 {onboardingStep === 0 && (
                   <div>
                     <div style={{ fontSize: "36px", marginBottom: "12px" }}>🏢</div>
@@ -1637,7 +1561,6 @@
                     {invitations.length > 0 && <div style={{ fontSize: "13px", color: C.muted, marginTop: "8px" }}>{invitations.length} email(s) registrados ✓</div>}
                   </div>
                 )}
-
                 <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "28px" }}>
                   {onboardingStep > 0 && <button style={S.btnSecondary} onClick={() => setOnboardingStep(s => s - 1)}>← Atrás</button>}
                   {onboardingStep < 2 && (
@@ -1656,7 +1579,6 @@
               </div>
             </div>
           )}
-
           {/* ── MODAL EDITAR CATÁLOGO ── */}
           {editCatalogItem && (
             <div style={S.overlay}>
@@ -1688,7 +1610,6 @@
               </div>
             </div>
           )}
-
           {/* ── MODAL EDITAR ── */}
           {editRecord && (
             <div style={S.overlay}>
@@ -1710,7 +1631,6 @@
               </div>
             </div>
           )}
-
           {/* ── MODAL CIERRE MES ── */}
           {closingMonth && (
             <div style={S.overlay}>
@@ -1730,7 +1650,6 @@
         </div>
       );
     }
-
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<App />);
   </script>
