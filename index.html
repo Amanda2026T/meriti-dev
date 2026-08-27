@@ -212,12 +212,19 @@
         setInvitations(data || []);
       }
       async function checkOnboarding() {
+        if (!profile?.company_id || profile?.role !== "admin") return;
+        const { data } = await supabase.from("company_settings")
+          .select("onboarding_done")
+          .eq("id", profile.company_id)
+          .single();
+        if (data && !data.onboarding_done) setShowOnboarding(true);
+      }
+      async function completeOnboarding() {
         if (!profile?.company_id) return;
-        const { data: depts } = await supabase.from("departments").select("id").eq("company_id", profile.company_id).limit(1);
-        const { data: profs } = await supabase.from("profiles").select("id").eq("role", "user").eq("company_id", profile.company_id).limit(1);
-        const companyHasName = company?.name && company.name !== "Mi Empresa";
-        const done = companyHasName && depts && depts.length > 0 && profs && profs.length > 0;
-        if (!done) setShowOnboarding(true);
+        await supabase.from("company_settings")
+          .update({ onboarding_done: true })
+          .eq("id", profile.company_id);
+        setShowOnboarding(false);
       }
       async function loadChallenge() {
         if (!profile?.company_id) return;
@@ -1520,7 +1527,7 @@
                     <div style={{ fontSize: "20px", fontWeight: "900" }}>¡Bienvenido a Meriti! 🎉</div>
                     <div style={{ fontSize: "13px", color: C.muted, marginTop: "4px" }}>Configura tu espacio en 3 pasos</div>
                   </div>
-                  <button onClick={() => setShowOnboarding(false)} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "20px" }}>×</button>
+                  <button onClick={completeOnboarding} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "20px" }}>×</button>
                 </div>
                 {/* Steps */}
                 <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
@@ -1573,7 +1580,7 @@
                     </button>
                   )}
                   {onboardingStep === 2 && (
-                    <button style={S.btnPrimary} onClick={() => setShowOnboarding(false)}>Empezar →</button>
+                    <button style={S.btnPrimary} onClick={completeOnboarding}>Empezar →</button>
                   )}
                 </div>
               </div>
