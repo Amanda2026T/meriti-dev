@@ -1,0 +1,38 @@
+{
+  "name": "Meriti",
+  "short_name": "Meriti",
+  "description": "Gamificación para equipos de trabajo",
+  "start_url": "/meriti-dev/",
+  "scope": "/meriti-dev/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#061a0e",
+  "theme_color": "#00C2AD",
+  "icons": [
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c6.png",
+      "sizes": "72x72",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c6.png",
+      "sizes": "96x96",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c6.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c6.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c6.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
