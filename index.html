@@ -96,6 +96,14 @@
     }
     // ── MAIN APP ─────────────────────────────────────────────────────────────
     function App() {
+      const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+      useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, []);
+
       const [session, setSession] = useState(null);
       const [profile, setProfile] = useState(null);
       const [company, setCompany] = useState(null);
@@ -583,7 +591,7 @@
       return (
         <div style={S.app}>
           {/* SIDEBAR */}
-          <aside className="desktop-sidebar" style={S.sidebar}>
+          {!isMobile && <aside style={S.sidebar}>
             <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {companyLogo ? <img src={companyLogo} alt="logo" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} /> : <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏆</div>}
@@ -625,11 +633,12 @@
                 <button onClick={handleLogout} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "16px", padding: "2px" }}>↩</button>
               </div>
             </div>
-          </aside>
+          </aside>}
           {/* MAIN */}
-          <div className="main-content" style={S.mainContent}>
-            {/* MOBILE BOTTOM NAV */}
-          <nav className="mobile-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0", zIndex: 100, boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
+          <div style={{ ...S.mainContent, marginLeft: isMobile ? "0" : "240px" }}>
+            }
+          {/* MOBILE BOTTOM NAV */}
+          {isMobile && <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0", zIndex: 100, boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
             {[
               { v: "dashboard", icon: "📊", label: "Ranking" },
               ...(profile.role !== "admin" ? [{ v: "registrar", icon: "➕", label: "Registrar" }] : []),
@@ -653,7 +662,7 @@
           </nav>
 
           {/* ADMIN MOBILE MENU */}
-          {showAdminMenu && (
+          {isMobile && showAdminMenu && (
             <div style={{ position: "fixed", bottom: "64px", right: "8px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "8px", zIndex: 200, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
               {[
                 { v: "departamentos", icon: "🏢", label: "Departamentos" },
@@ -670,7 +679,7 @@
           )}
 
           {/* TOPBAR */}
-            <header className="topbar" style={S.topbar}>
+            <header style={{ ...S.topbar, padding: isMobile ? "0 16px" : "0 32px" }}>
               <div style={{ fontSize: "15px", fontWeight: "700", color: C.text }}>
                 {view === "dashboard" && "Dashboard"}
                 {view === "registrar" && "Registrar logro"}
@@ -709,7 +718,7 @@
                 </div>
               </div>
             </header>
-            <div className="page-content" style={S.page}>
+            <div style={{ ...S.page, padding: isMobile ? "16px" : "32px", paddingBottom: isMobile ? "80px" : "32px" }}>
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
@@ -1052,9 +1061,9 @@
                       </div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
-                        <div style={{ position: "relative", width: "400px", height: "400px" }}>
+                        <div style={{ position: "relative", width: isMobile ? "300px" : "400px", height: isMobile ? "300px" : "400px" }}>
                           <div style={{ position: "absolute", top: "-16px", left: "50%", transform: "translateX(-50%)", zIndex: 10, fontSize: "32px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>▼</div>
-                          <svg className="roulette-svg" width="400" height="400" viewBox="0 0 400 400" style={{ transform: `rotate(${spinDeg}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none", filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.15))", borderRadius: "50%" }}>
+                          <svg width={isMobile ? "300" : "400"} height={isMobile ? "300" : "400"} viewBox="0 0 400 400" style={{ transform: `rotate(${spinDeg}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none", filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.15))", borderRadius: "50%" }}>
                             {(() => {
                               const n = prizes.length, cx = 200, cy = 200, r = 195;
                               const toRad = d => d * Math.PI / 180;
@@ -1414,7 +1423,7 @@
                     <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
                   </div>
                   {/* KPI cards */}
-                  <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
                     {[
                       { label: "Logros validados", value: totalValidated, icon: "✅", color: C.teal },
                       { label: "Logros pendientes", value: totalPending, icon: "⏳", color: C.yellow },
@@ -1727,7 +1736,7 @@
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/meriti-dev/sw.js')
+        navigator.serviceWorker.register('./sw.js')
           .then(reg => console.log('SW registrado:', reg.scope))
           .catch(err => console.log('SW error:', err));
       });
