@@ -19,6 +19,22 @@
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     #root { min-height: 100vh; }
     ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #00C2AD; border-radius: 3px; }
+    @media (max-width: 768px) {
+      .desktop-sidebar { display: none !important; }
+      .main-content { margin-left: 0 !important; }
+      .mobile-nav { display: flex !important; }
+      .page-content { padding: 16px !important; padding-bottom: 80px !important; }
+      .topbar { padding: 0 16px !important; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      .leaderboard-row { flex-wrap: wrap; }
+      table { font-size: 12px; }
+      th, td { padding: 8px !important; }
+      .modal-inner { padding: 20px !important; max-width: 95vw !important; }
+      .roulette-svg { width: 300px !important; height: 300px !important; }
+    }
+    @media (min-width: 769px) {
+      .mobile-nav { display: none !important; }
+    }
   </style>
 </head>
 <body>
@@ -121,6 +137,7 @@
       const logoInputRef = useRef(null);
       const [editCatalogItem, setEditCatalogItem] = useState(null);
       const [showPickerAdd, setShowPickerAdd] = useState(false);
+      const [showAdminMenu, setShowAdminMenu] = useState(false);
       const [showPickerEdit, setShowPickerEdit] = useState(false);
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem("meriti_dark") === "true");
       const [challenge, setChallenge] = useState(null);
@@ -566,7 +583,7 @@
       return (
         <div style={S.app}>
           {/* SIDEBAR */}
-          <aside style={S.sidebar}>
+          <aside className="desktop-sidebar" style={S.sidebar}>
             <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
                 {companyLogo ? <img src={companyLogo} alt="logo" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} /> : <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏆</div>}
@@ -610,9 +627,50 @@
             </div>
           </aside>
           {/* MAIN */}
-          <div style={S.mainContent}>
-            {/* TOPBAR */}
-            <header style={S.topbar}>
+          <div className="main-content" style={S.mainContent}>
+            {/* MOBILE BOTTOM NAV */}
+          <nav className="mobile-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#ffffff", borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0", zIndex: 100, boxShadow: "0 -2px 12px rgba(0,0,0,0.08)" }}>
+            {[
+              { v: "dashboard", icon: "📊", label: "Ranking" },
+              ...(profile.role !== "admin" ? [{ v: "registrar", icon: "➕", label: "Registrar" }] : []),
+              { v: "historial", icon: "📋", label: "Historial" },
+              ...(profile.role !== "admin" ? [{ v: "perfil", icon: "👤", label: "Perfil" }] : []),
+              ...(profile.role === "admin" ? [
+                { v: "validar", icon: "✅", label: "Validar" },
+                { v: "equipo", icon: "👥", label: "Equipo" },
+                { v: "admin_menu", icon: "⚙️", label: "Más" },
+              ] : []),
+              ...((profile.role === "admin" || (winner && winner.id === profile.id)) ? [{ v: "ruleta", icon: "🎡", label: "Ruleta" }] : []),
+            ].map(item => (
+              <button key={item.v} onClick={() => {
+                if (item.v === "admin_menu") setShowAdminMenu(v => !v);
+                else { setView(item.v); setShowAdminMenu(false); }
+              }} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", background: "none", border: "none", cursor: "pointer", padding: "4px 8px", color: view === item.v ? C.teal : C.muted, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                <span style={{ fontSize: "20px" }}>{item.icon}</span>
+                <span style={{ fontSize: "10px", fontWeight: view === item.v ? "700" : "500" }}>{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* ADMIN MOBILE MENU */}
+          {showAdminMenu && (
+            <div style={{ position: "fixed", bottom: "64px", right: "8px", background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "8px", zIndex: 200, boxShadow: "0 4px 20px rgba(0,0,0,0.15)" }}>
+              {[
+                { v: "departamentos", icon: "🏢", label: "Departamentos" },
+                { v: "catalogo", icon: "📝", label: "Catálogo" },
+                { v: "empresa", icon: "⚙️", label: "Empresa" },
+                { v: "reto", icon: "🎯", label: "Reto" },
+                { v: "stats", icon: "📈", label: "Estadísticas" },
+              ].map(item => (
+                <button key={item.v} onClick={() => { setView(item.v); setShowAdminMenu(false); }} style={{ display: "flex", alignItems: "center", gap: "10px", width: "100%", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", color: C.text, borderRadius: "8px" }}>
+                  <span>{item.icon}</span><span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* TOPBAR */}
+            <header className="topbar" style={S.topbar}>
               <div style={{ fontSize: "15px", fontWeight: "700", color: C.text }}>
                 {view === "dashboard" && "Dashboard"}
                 {view === "registrar" && "Registrar logro"}
@@ -651,7 +709,7 @@
                 </div>
               </div>
             </header>
-            <div style={S.page}>
+            <div className="page-content" style={S.page}>
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
@@ -996,7 +1054,7 @@
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "24px" }}>
                         <div style={{ position: "relative", width: "400px", height: "400px" }}>
                           <div style={{ position: "absolute", top: "-16px", left: "50%", transform: "translateX(-50%)", zIndex: 10, fontSize: "32px", filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.3))" }}>▼</div>
-                          <svg width="400" height="400" viewBox="0 0 400 400" style={{ transform: `rotate(${spinDeg}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none", filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.15))", borderRadius: "50%" }}>
+                          <svg className="roulette-svg" width="400" height="400" viewBox="0 0 400 400" style={{ transform: `rotate(${spinDeg}deg)`, transition: spinning ? "transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)" : "none", filter: "drop-shadow(0 4px 20px rgba(0,0,0,0.15))", borderRadius: "50%" }}>
                             {(() => {
                               const n = prizes.length, cx = 200, cy = 200, r = 195;
                               const toRad = d => d * Math.PI / 180;
@@ -1356,7 +1414,7 @@
                     <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
                   </div>
                   {/* KPI cards */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
+                  <div className="stat-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
                     {[
                       { label: "Logros validados", value: totalValidated, icon: "✅", color: C.teal },
                       { label: "Logros pendientes", value: totalPending, icon: "⏳", color: C.yellow },
