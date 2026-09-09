@@ -88,7 +88,7 @@
     function NavItem({ icon, label, active, onClick, badge, teal, muted }) {
       return (
         <button onClick={onClick} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "9px 16px", borderRadius: "8px", border: "none", cursor: "pointer", width: "100%", textAlign: "left", background: active ? `${teal || "#D4AF37"}15` : "transparent", color: active ? (teal || "#D4AF37") : (muted || "#6B7280"), fontWeight: active ? "700" : "500", fontSize: "14px", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "all 0.15s", position: "relative" }}>
-          <span style={{ fontSize: "16px" }}>{icon}</span>
+          <span style={{ fontSize: "15px", fontWeight: "400", letterSpacing: "-0.5px", minWidth: "16px", textAlign: "center" }}>{icon}</span>
           <span>{label}</span>
           {badge > 0 && <span style={{ marginLeft: "auto", background: "#EF4444", color: "#fff", borderRadius: "10px", fontSize: "11px", fontWeight: "700", padding: "1px 7px" }}>{badge}</span>}
         </button>
@@ -573,7 +573,16 @@
       // ── LOADING / AUTH ────────────────────────────────────────────────────
       if (loading) return (
         <div style={S.loginWrap}><div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "20px" }}>🏆</div>
+          <div style={{ marginBottom: "20px", display: "flex", justifyContent: "center" }}>
+          <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+            <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
+            <path d="M13 17C9 17 7 20 7 23C7 27 10 29 13 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+            <path d="M43 17C47 17 49 20 49 23C49 27 46 29 43 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+            <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+            <rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.5"/>
+            <rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.5"/>
+          </svg>
+        </div>
           <div style={S.spinner} />
           <div style={{ marginTop: "16px", color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>Cargando...</div>
         </div></div>
@@ -582,7 +591,16 @@
         <div style={S.loginWrap}>
           <div style={S.loginCard}>
             <div style={{ textAlign: "center", marginBottom: "36px" }}>
-              <div style={{ fontSize: "44px", marginBottom: "12px" }}>🏆</div>
+              <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}>
+                <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
+                  <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                  <path d="M13 17C9 17 7 20 7 23C7 27 10 29 13 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+                  <path d="M43 17C47 17 49 20 49 23C49 27 46 29 43 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+                  <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  <rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.5"/>
+                  <rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.5"/>
+                </svg>
+              </div>
               <div style={{ fontSize: "32px", fontWeight: "400", color: C.dark, marginBottom: "6px", fontFamily: "'DM Serif Display', serif" }}>meriti</div>
               <div style={{ fontSize: "14px", color: C.muted }}>Gamificación para equipos de trabajo</div>
             </div>
@@ -612,7 +630,14 @@
           {!isMobile && <aside style={S.sidebar}>
             <div style={{ padding: "20px 16px 16px", borderBottom: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                {companyLogo ? <img src={companyLogo} alt="logo" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} /> : <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "18px" }}>🏆</div>}
+                {companyLogo ? <img src={companyLogo} alt="logo" style={{ width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" }} /> : <div style={{ width: "36px", height: "36px", borderRadius: "8px", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="22" height="22" viewBox="0 0 60 60" fill="none">
+                    <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                    <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    <rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.5"/>
+                    <rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.5"/>
+                  </svg>
+                </div>}
                 <div>
                   <div style={{ fontSize: "16px", fontWeight: "400", color: C.text, lineHeight: 1.2, fontFamily: "'DM Serif Display', serif" }}>{companyName}</div>
                   <div style={{ fontSize: "11px", color: C.muted }}>powered by Meriti</div>
@@ -620,24 +645,24 @@
               </div>
             </div>
             <nav style={{ flex: 1, padding: "12px 8px", display: "flex", flexDirection: "column", gap: "2px" }}>
-              <div style={S.sectionLabel} className="px-2">Principal</div>
-              <NavItem teal={C.teal} muted={C.muted} icon="📊" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
-              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="➕" label="Registrar logro" active={view === "registrar"} onClick={() => setView("registrar")} />}
-              <NavItem teal={C.teal} muted={C.muted} icon="📋" label="Historial" active={view === "historial"} onClick={() => setView("historial")} />
-              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="👤" label="Mi perfil" active={view === "perfil"} onClick={() => setView("perfil")} />}
+              <div style={{ ...S.sectionLabel, padding: "0 8px" }}>Principal</div>
+              <NavItem teal={C.teal} muted={C.muted} icon="◈" label="Dashboard" active={view === "dashboard"} onClick={() => setView("dashboard")} />
+              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="＋" label="Registrar logro" active={view === "registrar"} onClick={() => setView("registrar")} />}
+              <NavItem teal={C.teal} muted={C.muted} icon="≡" label="Historial" active={view === "historial"} onClick={() => setView("historial")} />
+              {profile.role !== "admin" && <NavItem teal={C.teal} muted={C.muted} icon="◎" label="Mi perfil" active={view === "perfil"} onClick={() => setView("perfil")} />}
               {(profile.role === "admin" || (winner && winner.id === profile.id)) && (
-                <NavItem teal={C.teal} muted={C.muted} icon="🎡" label="Ruleta" active={view === "ruleta"} onClick={() => setView("ruleta")} />
+                <NavItem teal={C.teal} muted={C.muted} icon="◎" label="Ruleta" active={view === "ruleta"} onClick={() => setView("ruleta")} />
               )}
               {profile.role === "admin" && (
                 <>
-                  <div style={{ ...S.sectionLabel, marginTop: "16px" }}>Administración</div>
-                  <NavItem teal={C.teal} muted={C.muted} icon="✅" label="Validar logros" active={view === "validar"} onClick={() => setView("validar")} badge={pendingCount} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="👥" label="Equipo" active={view === "equipo"} onClick={() => setView("equipo")} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="🏢" label="Departamentos" active={view === "departamentos"} onClick={() => setView("departamentos")} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="📝" label="Catálogo" active={view === "catalogo"} onClick={() => setView("catalogo")} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="⚙️" label="Empresa" active={view === "empresa"} onClick={() => setView("empresa")} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="🎯" label="Reto colectivo" active={view === "reto"} onClick={() => setView("reto")} />
-                  <NavItem teal={C.teal} muted={C.muted} icon="📈" label="Estadísticas" active={view === "stats"} onClick={() => setView("stats")} />
+                  <div style={{ ...S.sectionLabel, marginTop: "16px" }}>Admin</div>
+                  <NavItem teal={C.teal} muted={C.muted} icon="✓" label="Validar logros" active={view === "validar"} onClick={() => setView("validar")} badge={pendingCount} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="⊞" label="Equipo" active={view === "equipo"} onClick={() => setView("equipo")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="⌂" label="Departamentos" active={view === "departamentos"} onClick={() => setView("departamentos")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="☰" label="Catálogo" active={view === "catalogo"} onClick={() => setView("catalogo")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="⚙" label="Empresa" active={view === "empresa"} onClick={() => setView("empresa")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="◉" label="Reto colectivo" active={view === "reto"} onClick={() => setView("reto")} />
+                  <NavItem teal={C.teal} muted={C.muted} icon="⌇" label="Estadísticas" active={view === "stats"} onClick={() => setView("stats")} />
                 </>
               )}
             </nav>
@@ -648,7 +673,7 @@
                   <div style={{ fontSize: "13px", fontWeight: "700", color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
                   <div style={{ fontSize: "11px", color: C.muted }}>{profile.role === "admin" ? "Manager" : "Empleado"}</div>
                 </div>
-                <button onClick={handleLogout} style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "16px", padding: "2px" }}>↩</button>
+                <button onClick={handleLogout} title="Cerrar sesión" style={{ background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: "13px", padding: "2px", opacity: 0.6 }}>↩</button>
               </div>
             </div>
           </aside>}
@@ -1774,7 +1799,7 @@
           {closingMonth && (
             <div style={S.overlay}>
               <div style={{ ...S.modal, textAlign: "center" }}>
-                <div style={{ fontSize: "56px", marginBottom: "16px" }}>🏆</div>
+                <div style={{ marginBottom: "16px", display: "flex", justifyContent: "center" }}><svg width="56" height="56" viewBox="0 0 60 60" fill="none"><path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" fill="none"/><path d="M13 17C9 17 7 20 7 23C7 27 10 29 13 29" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5"/><path d="M43 17C47 17 49 20 49 23C49 27 46 29 43 29" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none" opacity="0.5"/><path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/><rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.6"/><rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.6"/></svg></div>
                 <div style={{ fontWeight: "900", fontSize: "22px", marginBottom: "8px" }}>Cierre de {MONTH_NAMES[now.getMonth()]}</div>
                 <div style={{ color: C.muted, marginBottom: "8px" }}>El ganador del mes es:</div>
                 <div style={{ fontSize: "32px", fontWeight: "900", color: winner ? getColor(winner.name) : C.text, marginBottom: "4px" }}>{winner?.name || "—"}</div>
