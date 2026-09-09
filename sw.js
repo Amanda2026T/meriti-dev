@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meriti-v1';
+const CACHE_NAME = 'meriti-v3';
 const urlsToCache = [
   '/meriti-dev/',
   '/meriti-dev/index.html',
