@@ -790,40 +790,11 @@
                 </div>
               </div>
             </header>
-            <div style={{ ...S.page, padding: isMobile ? "0" : "32px", paddingBottom: isMobile ? "90px" : "32px" }}>
+            <div style={{ ...S.page, padding: isMobile ? "16px" : "32px", paddingBottom: isMobile ? "90px" : "32px" }}>
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
-                  {/* MOBILE HERO HEADER */}
-                  {isMobile && (
-                    <div style={{ background: `linear-gradient(180deg, ${C.card} 0%, ${C.bg} 100%)`, padding: "18px 16px 16px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                          <svg width="16" height="16" viewBox="0 0 60 60" fill="none">
-                            <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
-                            <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                          </svg>
-                          <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "15px", color: C.text }}>meriti</span>
-                        </div>
-                        <span style={{ fontSize: "10px", color: C.muted, fontWeight: "600" }}>{currentMonthLabel}</span>
-                      </div>
-                      <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "30px", color: C.text, lineHeight: 1, marginBottom: "4px" }}>{currentMonthLabel}</div>
-                      <div style={{ fontSize: "11px", color: C.muted, marginBottom: "14px" }}>{records.filter(r => r.validated).length} logros validados este mes</div>
-                      {/* Reto card en hero */}
-                      {challenge && (
-                        <div style={{ background: `${C.teal}08`, border: `1px solid ${C.teal}20`, borderRadius: "12px", padding: "12px 14px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                            <div style={{ fontSize: "12px", fontWeight: "800", color: C.text }}>{challenge.title}</div>
-                            <div style={{ fontSize: "13px", fontWeight: "800", color: C.teal }}>{Math.round((challenge.current_progress || 0) / challenge.target * 100)}%</div>
-                          </div>
-                          <div style={{ height: "4px", background: `${C.border}`, borderRadius: "2px", overflow: "hidden", marginBottom: "5px" }}>
-                            <div style={{ height: "100%", width: `${Math.min(100, Math.round((challenge.current_progress || 0) / challenge.target * 100))}%`, background: `linear-gradient(90deg, ${C.green}, ${C.teal})`, borderRadius: "2px" }}></div>
-                          </div>
-                          <div style={{ fontSize: "9px", color: C.muted }}>{challenge.current_progress || 0} / {challenge.target} {challenge.unit_type || "pts"} · Premio: {challenge.prize}</div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+
                   {/* Month navigation — solo desktop */}
                   {!isMobile && <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
                     <button onClick={() => setViewingMonthIndex(i => Math.min(i + 1, allMonths.length - 1))} disabled={viewingMonthIndex >= allMonths.length - 1}
@@ -835,12 +806,7 @@
                     <button onClick={() => setViewingMonthIndex(i => Math.max(i - 1, 0))} disabled={viewingMonthIndex === 0}
                       style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex === 0 ? 0.3 : 1 }}>Siguiente →</button>
                   </div>}
-                  {/* Mobile month label */}
-                  {isMobile && (
-                    <div style={{ padding: "0 16px", marginBottom: "4px" }}>
-                      <div style={{ fontSize: "11px", color: C.muted, fontWeight: "600" }}>{cmd.label}</div>
-                    </div>
-                  )}
+
                   {/* Department filter */}
                   {isCurrent && departments.length > 0 && (
                     <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
