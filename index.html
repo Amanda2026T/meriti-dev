@@ -790,7 +790,7 @@
                 </div>
               </div>
             </header>
-            <div style={{ ...S.page, padding: isMobile ? "16px" : "32px", paddingBottom: isMobile ? "80px" : "32px" }}>
+            <div style={{ ...S.page, padding: isMobile ? "0" : "32px", paddingBottom: isMobile ? "90px" : "32px" }}>
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
@@ -834,7 +834,13 @@
                     </div>
                     <button onClick={() => setViewingMonthIndex(i => Math.max(i - 1, 0))} disabled={viewingMonthIndex === 0}
                       style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex === 0 ? 0.3 : 1 }}>Siguiente →</button>
-                  </div>
+                  </div>}
+                  {/* Mobile month label */}
+                  {isMobile && (
+                    <div style={{ padding: "0 16px", marginBottom: "4px" }}>
+                      <div style={{ fontSize: "11px", color: C.muted, fontWeight: "600" }}>{cmd.label}</div>
+                    </div>
+                  )}
                   {/* Department filter */}
                   {isCurrent && departments.length > 0 && (
                     <div style={{ display: "flex", gap: "8px", marginBottom: "20px", flexWrap: "wrap" }}>
@@ -1539,7 +1545,7 @@
                     <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
                   </div>
                   {/* KPI cards */}
-                  <div style={{ padding: isMobile ? "12px 14px 0" : "0", ...({}), display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
+                  <div style={{ padding: isMobile ? "12px 14px 0" : "0", display: "grid", gridTemplateColumns: isMobile ? "repeat(2,1fr)" : "repeat(4,1fr)", gap: "16px", marginBottom: "24px" }}>
                     {[
                       { label: "Logros validados", value: totalValidated, icon: "✅", color: C.teal },
                       { label: "Logros pendientes", value: totalPending, icon: "⏳", color: C.yellow },
