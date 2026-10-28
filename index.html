@@ -17,6 +17,17 @@
     body.dark { background: #060E1C; color: #f0fdf4; }
     @keyframes spin { to { transform: rotate(360deg); } }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateX(-50%) translateY(16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes dot1 { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
+    @keyframes dot2 { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
+    @keyframes dot3 { 0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); } 40% { opacity: 1; transform: scale(1.2); } }
+    @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+    @keyframes scaleIn { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+    .view-transition { animation: scaleIn 0.18s ease; }
+    .skeleton { background: linear-gradient(90deg, rgba(255,255,255,0.04) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+    .skeleton-light { background: linear-gradient(90deg, #E2E8F0 25%, #F1F5F9 50%, #E2E8F0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: 6px; }
+    button, [role="button"] { -webkit-tap-highlight-color: transparent; cursor: pointer; }
+    button:active { transform: scale(0.97); transition: transform 0.1s ease; }
     #root { min-height: 100vh; }
     ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #f1f1f1; } ::-webkit-scrollbar-thumb { background: #D4AF37; border-radius: 3px; }
     @media (max-width: 768px) {
@@ -136,7 +147,7 @@
       const [wonPrize, setWonPrize] = useState(null);
       const [currentDeg, setCurrentDeg] = useState(0);
       // Admin forms
-      const [newCatalogItem, setNewCatalogItem] = useState({ label: "", pts: "", icon: "⭐" });
+      const [newCatalogItem, setNewCatalogItem] = useState({ label: "", pts: "" });
       const [newPrize, setNewPrize] = useState("");
       const [newDept, setNewDept] = useState("");
       const [editDept, setEditDept] = useState(null);
@@ -144,13 +155,17 @@
       const [companyMsg, setCompanyMsg] = useState("");
       const logoInputRef = useRef(null);
       const [editCatalogItem, setEditCatalogItem] = useState(null);
-      const [showPickerAdd, setShowPickerAdd] = useState(false);
-      const [showAdminMenu, setShowAdminMenu] = useState(false);
+            const [showAdminMenu, setShowAdminMenu] = useState(false);
+      const [toasts, setToasts] = useState([]);
+      const showToast = (message, type = "success") => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+      };
       const [congratsTarget, setCongratsTarget] = useState(null);
       const [congratsMsg, setCongratsMsg] = useState("");
       const [congratsEmoji, setCongratsEmoji] = useState("🎉");
       const [visibility, setVisibility] = useState("all");
-      const [showPickerEdit, setShowPickerEdit] = useState(false);
       const [darkMode, setDarkMode] = useState(() => localStorage.getItem("meriti_dark") === "true");
       const [challenge, setChallenge] = useState(null);
       const [challengeForm, setChallengeForm] = useState({ title: "", description: "", targetPts: "", prize: "", deadline: "" });
@@ -356,7 +371,7 @@
       async function handleEditCatalogItem() {
         if (!editCatalogItem?.label.trim() || !editCatalogItem?.pts) return;
         const { error } = await supabase.from("catalog_items").update({ label: editCatalogItem.label.trim(), pts: parseInt(editCatalogItem.pts), icon: editCatalogItem.icon }).eq("id", editCatalogItem.id);
-        if (error) { alert("Error al guardar: " + error.message); return; }
+        if (error) { showToast("Acción completada"); return; }
         setEditCatalogItem(null);
         setShowPickerEdit(false);
         await loadCatalog();
@@ -572,20 +587,25 @@
       const companyLogo = company?.logo || null;
       // ── LOADING / AUTH ────────────────────────────────────────────────────
       if (loading) return (
-        <div style={S.loginWrap}><div style={{ textAlign: "center" }}>
-          <div style={{ marginBottom: "20px", display: "flex", justifyContent: "center" }}>
-          <svg width="48" height="48" viewBox="0 0 60 60" fill="none">
-            <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
-            <path d="M13 17C9 17 7 20 7 23C7 27 10 29 13 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
-            <path d="M43 17C47 17 49 20 49 23C49 27 46 29 43 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
-            <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-            <rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.5"/>
-            <rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.5"/>
-          </svg>
+        <div style={{ position: "fixed", inset: 0, background: "#060E1C", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "14px", animation: "fadeIn 0.5s ease" }}>
+            <svg width="52" height="52" viewBox="0 0 60 60" fill="none">
+              <path d="M13 12L13 31C13 36 20 40 28 40C36 40 43 36 43 31L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              <path d="M13 17C9 17 7 20 7 23C7 27 10 29 13 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+              <path d="M43 17C47 17 49 20 49 23C49 27 46 29 43 29" stroke="#D4AF37" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.5"/>
+              <path d="M13 12L28 25L43 12" stroke="#D4AF37" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+              <rect x="21" y="43" width="14" height="2" rx="1" fill="#D4AF37" opacity="0.5"/>
+              <rect x="25" y="40" width="6" height="4" rx="1" fill="#D4AF37" opacity="0.5"/>
+            </svg>
+            <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "34px", color: "#fff", lineHeight: 1 }}>meriti</div>
+            <div style={{ fontSize: "9px", fontWeight: "600", letterSpacing: "3px", textTransform: "uppercase", color: "rgba(212,175,55,0.45)" }}>team performance</div>
+          </div>
+          <div style={{ position: "absolute", bottom: "56px", display: "flex", gap: "8px" }}>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#D4AF37", animation: "dot1 1.4s ease-in-out infinite" }}></div>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#D4AF37", animation: "dot2 1.4s ease-in-out infinite 0.2s" }}></div>
+            <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#D4AF37", animation: "dot3 1.4s ease-in-out infinite 0.4s" }}></div>
+          </div>
         </div>
-          <div style={S.spinner} />
-          <div style={{ marginTop: "16px", color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>Cargando...</div>
-        </div></div>
       );
       if (!session || !profile) return (
         <div style={S.loginWrap}>
@@ -668,7 +688,7 @@
             </nav>
             <div style={{ padding: "12px 8px", borderTop: `1px solid ${C.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "10px 12px", borderRadius: "8px", background: darkMode ? "#0A1628" : "#F9FAFB" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "13px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: `linear-gradient(135deg, ${C.teal}, ${C.green})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "13px", color: "#fff", flexShrink: 0 }}>{(() => { const p = profile.name?.trim().split(" "); return p && p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : (profile.name?.substring(0,2) || "?").toUpperCase(); })()}</div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "13px", fontWeight: "700", color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</div>
                   <div style={{ fontSize: "11px", color: C.muted }}>{profile.role === "admin" ? "Manager" : "Empleado"}</div>
@@ -685,7 +705,7 @@
             <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.card, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0 10px", zIndex: 100, boxShadow: "0 -2px 20px rgba(0,0,0,0.15)" }}>
               {/* EMPLEADO */}
               {profile.role !== "admin" && (<>
-                <button onClick={() => setView("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", background: "none", border: "none", cursor: "pointer", padding: "0 8px", color: view === "dashboard" ? C.teal : C.muted }}>
+                <button onClick={() => setView("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", background: "none", border: "none", cursor: "pointer", padding: "0 8px", minHeight: "44px", justifyContent: "center", color: view === "dashboard" ? C.teal : C.muted }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                   <span style={{ fontSize: "8px", fontWeight: view === "dashboard" ? "700" : "500", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ranking</span>
                 </button>
@@ -708,7 +728,7 @@
               </>)}
               {/* ADMIN */}
               {profile.role === "admin" && (<>
-                <button onClick={() => setView("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", background: "none", border: "none", cursor: "pointer", padding: "0 8px", color: view === "dashboard" ? C.teal : C.muted }}>
+                <button onClick={() => setView("dashboard")} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px", background: "none", border: "none", cursor: "pointer", padding: "0 8px", minHeight: "44px", justifyContent: "center", color: view === "dashboard" ? C.teal : C.muted }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
                   <span style={{ fontSize: "8px", fontWeight: view === "dashboard" ? "700" : "500", fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Ranking</span>
                 </button>
@@ -790,7 +810,7 @@
                 </div>
               </div>
             </header>
-            <div style={{ ...S.page, padding: isMobile ? "16px" : "32px", paddingBottom: isMobile ? "90px" : "32px" }}>
+            <div key={view} className="view-transition" style={{ ...S.page, padding: isMobile ? "16px" : "32px", paddingBottom: isMobile ? "90px" : "32px" }}>
               {/* ── DASHBOARD ── */}
               {view === "dashboard" && (
                 <>
@@ -800,7 +820,7 @@
                     <button onClick={() => setViewingMonthIndex(i => Math.min(i + 1, allMonths.length - 1))} disabled={viewingMonthIndex >= allMonths.length - 1}
                       style={{ ...S.btnSecondary, padding: "8px 14px", opacity: viewingMonthIndex >= allMonths.length - 1 ? 0.3 : 1 }}>← Anterior</button>
                     <div style={{ textAlign: "center" }}>
-                      <div style={S.pageTitle}>{cmd.label}</div>
+                      <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>{cmd.label}</div>
                       <div style={{ fontSize: "13px", color: C.muted }}>{isCurrent ? `${records.filter(r => r.month === monthKey && r.validated).length} logros validados` : `Mes cerrado · 🥇 ${cmd.histData?.winner}`}</div>
                     </div>
                     <button onClick={() => setViewingMonthIndex(i => Math.max(i - 1, 0))} disabled={viewingMonthIndex === 0}
@@ -869,7 +889,7 @@
                               <div style={{ width: "32px", height: "32px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: i === 0 ? "linear-gradient(135deg, #FFD700, #FFA500)" : i === 1 ? "linear-gradient(135deg, #C0C0C0, #888)" : "linear-gradient(135deg, #CD7F32, #8B4513)", fontSize: "16px", flexShrink: 0 }}>
                                 {i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉"}
                               </div>
-                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "14px", color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
+                              <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "14px", color: "#fff", flexShrink: 0 }}>{(() => { const p = u.name?.trim().split(" "); return p && p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : (u.name?.substring(0,2) || "?").toUpperCase(); })()}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: "14px", fontWeight: "700", marginBottom: "5px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
                                   {u.name}
@@ -928,35 +948,109 @@
               )}
               {/* ── REGISTRAR ── */}
               {view === "registrar" && profile.role !== "admin" && (
-                <div style={{ maxWidth: "560px" }}>
-                  <div style={S.pageTitle}>Nuevo logro</div>
-                  <div style={S.pageSubtitle}>Registra lo que has conseguido hoy</div>
-                  <div style={S.card}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: "18px" }}>
-                      <div><label style={S.label}>¿Qué has conseguido?</label>
-                        <select style={S.select} value={form.catalogId} onChange={e => setForm(f => ({ ...f, catalogId: e.target.value }))}>
-                          <option value="">Selecciona un item...</option>
-                          {catalog.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label} — {c.pts} pts</option>)}
-                        </select>
+                <div style={{ maxWidth: isMobile ? "100%" : "480px" }}>
+                  {/* Header */}
+                  {!isMobile && (
+                    <div style={{ marginBottom: "24px" }}>
+                      <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Nuevo logro</div>
+                      <div style={S.pageSubtitle}>Registra lo que has conseguido hoy</div>
+                    </div>
+                  )}
+                  {isMobile && (
+                    <div style={{ background: `linear-gradient(180deg, ${C.card} 0%, ${C.bg} 100%)`, padding: "16px 16px 14px", marginBottom: "4px" }}>
+                      <div style={{ fontSize: "9px", fontWeight: "700", letterSpacing: "2px", color: `${C.teal}99`, textTransform: "uppercase", marginBottom: "5px" }}>Nuevo logro</div>
+                      <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", color: C.text, lineHeight: 1.15 }}>¿Qué has<br/>conseguido hoy?</div>
+                    </div>
+                  )}
+
+                  {/* Catalog pills */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: isMobile ? "0 13px" : "0", marginBottom: "12px" }}>
+                    {catalog.map(c => {
+                      const selected = form.catalogId === c.id;
+                      return (
+                        <div key={c.id}
+                          onClick={() => setForm(f => ({ ...f, catalogId: c.id }))}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between",
+                            padding: "13px 14px", borderRadius: "18px", cursor: "pointer",
+                            background: selected ? `${C.teal}10` : (darkMode ? "rgba(255,255,255,0.03)" : "#F9FAFB"),
+                            border: selected ? `1.5px solid ${C.teal}60` : `1px solid ${darkMode ? "rgba(255,255,255,0.07)" : C.border}`,
+                            transition: "all 0.15s ease",
+                          }}>
+                          <div style={{ fontSize: "13px", fontWeight: selected ? "700" : "600", color: selected ? C.text : C.muted }}>
+                            {c.label}
+                          </div>
+                          {/* Pts circle — gold if selected, grey if not */}
+                          <div style={{
+                            width: "42px", height: "42px", borderRadius: "50%", flexShrink: 0,
+                            background: selected ? `linear-gradient(135deg, ${C.green}, ${C.teal})` : (darkMode ? "rgba(255,255,255,0.08)" : "#E5E7EB"),
+                            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                            boxShadow: selected ? `0 4px 12px ${C.teal}40` : "none",
+                            transition: "all 0.15s ease",
+                          }}>
+                            <div style={{ fontSize: "13px", fontWeight: "900", lineHeight: 1, color: selected ? "#060E1C" : (darkMode ? "rgba(255,255,255,0.3)" : "#9CA3AF") }}>{c.pts}</div>
+                            <div style={{ fontSize: "7px", fontWeight: "700", lineHeight: 1, color: selected ? "rgba(0,0,0,0.5)" : (darkMode ? "rgba(255,255,255,0.2)" : "#D1D5DB") }}>pts</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Description */}
+                  <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
+                    <input style={{ ...S.input, borderRadius: "50px", padding: "12px 18px" }}
+                      type="text" placeholder="Describe tu logro..."
+                      value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
+                  </div>
+
+                  {/* Dept selector — only if multiple depts */}
+                  {departments.length > 0 && (
+                    <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
+                      <select style={{ ...S.select, borderRadius: "50px", padding: "12px 18px" }}
+                        value={form.deptId} onChange={e => setForm(f => ({ ...f, deptId: e.target.value }))}>
+                        <option value="">Sin departamento</option>
+                        {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Reto contribution */}
+                  {challenge && form.catalogId && (
+                    <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
+                      <div style={{ background: `${C.teal}08`, border: `1px solid ${C.teal}20`, borderRadius: "14px", padding: "12px 14px" }}>
+                        <div style={{ fontSize: "10px", fontWeight: "700", color: C.teal, marginBottom: "6px", letterSpacing: "0.5px" }}>Reto activo · {challenge.unit_type || "pts"}</div>
+                        <div style={{ fontSize: "11px", color: C.muted, marginBottom: "8px" }}>{challenge.title}</div>
+                        <input style={{ ...S.input, borderRadius: "50px", padding: "9px 14px" }}
+                          type="number" inputMode="numeric" min="0"
+                          placeholder={`¿Cuánto has aportado al reto? (${challenge.unit_type || "pts"})`}
+                          value={form.retoContribution || ""}
+                          onChange={e => setForm(f => ({ ...f, retoContribution: e.target.value }))} />
                       </div>
-                      {departments.length > 0 && (
-                        <div><label style={S.label}>Departamento</label>
-                          <select style={S.select} value={form.deptId} onChange={e => setForm(f => ({ ...f, deptId: e.target.value }))}>
-                            <option value="">Sin departamento</option>
-                            {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                          </select>
+                    </div>
+                  )}
+
+                  {formMsg && (
+                    <div style={{ margin: isMobile ? "0 13px 10px" : "0 0 10px", fontSize: "13px", padding: "10px 14px", borderRadius: "10px", background: formMsg.startsWith("✅") ? "#D1FAE5" : "#FEF3C7", color: formMsg.startsWith("✅") ? "#065F46" : "#92400E" }}>{formMsg}</div>
+                  )}
+
+                  {
+                  <div style={{ padding: isMobile ? "0 13px" : "0" }}>
+                    <div onClick={form.catalogId ? handleSubmit : undefined}
+                      style={{
+                        background: form.catalogId ? `linear-gradient(135deg, ${C.green}, ${C.teal})` : (darkMode ? "rgba(255,255,255,0.06)" : "#E5E7EB"),
+                        borderRadius: "50px", padding: "14px 20px",
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        cursor: form.catalogId ? "pointer" : "default",
+                        boxShadow: form.catalogId ? `0 8px 20px ${C.teal}35` : "none",
+                        transition: "all 0.2s ease",
+                      }}>
+                      <div>
+                        <div style={{ fontSize: "8px", color: form.catalogId ? "rgba(0,0,0,0.45)" : C.muted, fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "2px" }}>A ganar</div>
+                        <div style={{ fontSize: "20px", fontWeight: "900", color: form.catalogId ? "#060E1C" : C.muted }}>
+                          {form.catalogId ? `+${catalog.find(c => c.id === form.catalogId)?.pts} pts` : "— pts"}
                         </div>
-                      )}
-                      <div><label style={S.label}>Fecha</label><input style={S.input} type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
-                      <div><label style={S.label}>Descripción</label><input style={S.input} type="text" placeholder="Describe brevemente tu logro..." value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} /></div>
-                      {form.catalogId && (
-                        <div style={{ padding: "12px 16px", borderRadius: "8px", background: `${C.teal}10`, border: `1px solid ${C.teal}30` }}>
-                          <span style={{ color: C.teal, fontWeight: "700" }}>+{catalog.find(c => c.id === form.catalogId)?.pts} puntos</span>
-                          <span style={{ color: C.muted, fontSize: "13px" }}> · pendiente de validación</span>
-                        </div>
-                      )}
-                      {formMsg && <div style={{ fontSize: "13px", padding: "10px 14px", borderRadius: "8px", background: formMsg.startsWith("✅") ? "#D1FAE5" : "#FEF3C7", color: formMsg.startsWith("✅") ? "#065F46" : "#92400E" }}>{formMsg}</div>}
-                      <button style={S.btnPrimary} onClick={handleSubmit}>Enviar logro →</button>
+                      </div>
+                      <div style={{ fontSize: "13px", fontWeight: "800", color: form.catalogId ? "#060E1C" : C.muted }}>Enviar →</div>
                     </div>
                   </div>
                 </div>
@@ -989,7 +1083,7 @@
                   <>
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "28px" }}>
-                      <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: "28px", color: "#fff", flexShrink: 0 }}>{profile.name[0]}</div>
+                      <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "900", fontSize: "28px", color: "#fff", flexShrink: 0 }}>{(() => { const p = profile.name?.trim().split(" "); return p && p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : (profile.name?.substring(0,2) || "?").toUpperCase(); })()}</div>
                       <div>
                         <div style={{ fontSize: "26px", fontWeight: "900" }}>{profile.name}</div>
                         <div style={{ fontSize: "14px", color: C.muted }}>{profile.email}</div>
@@ -1079,7 +1173,7 @@
               {/* ── HISTORIAL ── */}
               {view === "historial" && (
                 <>
-                  <div style={S.pageTitle}>Historial</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Historial</div>
                   <div style={S.pageSubtitle}>Todos los logros registrados</div>
                   <div style={S.card}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1127,7 +1221,7 @@
               {/* ── RULETA ── */}
               {view === "ruleta" && (
                 <div style={{ maxWidth: "600px" }}>
-                  <div style={S.pageTitle}>Ruleta de premios</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Ruleta de premios</div>
                   <div style={S.pageSubtitle}>{winner ? `¡Felicidades ${winner.name}! Gira para descubrir tu premio 🎉` : "Solo el ganador del mes puede girar"}</div>
                   <div style={S.card}>
                     {prizes.length === 0 ? (
@@ -1217,7 +1311,7 @@
               {/* ── VALIDAR ── */}
               {view === "validar" && profile.role === "admin" && (
                 <>
-                  <div style={S.pageTitle}>Validar logros</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Validar logros</div>
                   <div style={S.pageSubtitle}>{pendingCount} logros pendientes de validación</div>
                   <div style={S.card}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1257,7 +1351,7 @@
               {/* ── EQUIPO ── */}
               {view === "equipo" && profile.role === "admin" && (
                 <>
-                  <div style={S.pageTitle}>Equipo</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Equipo</div>
                   <div style={S.pageSubtitle}>Gestiona los miembros y sus roles</div>
                   <div style={S.card}>
                     <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -1324,7 +1418,7 @@
               {/* ── DEPARTAMENTOS ── */}
               {view === "departamentos" && profile.role === "admin" && (
                 <>
-                  <div style={S.pageTitle}>Departamentos</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Departamentos</div>
                   <div style={S.pageSubtitle}>Organiza tu equipo por áreas</div>
                   <div style={S.card}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
@@ -1362,14 +1456,14 @@
               {/* ── CATALOGO ── */}
               {view === "catalogo" && profile.role === "admin" && (
                 <>
-                  <div style={S.pageTitle}>Catálogo de logros</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Catálogo de logros</div>
                   <div style={S.pageSubtitle}>Define qué acciones suman puntos y cuántos</div>
                   <div style={S.card}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
                       {catalog.map(item => (
                         <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0A1628" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <span style={{ fontSize: "22px" }}>{item.icon}</span>
+                            <span style={{ fontSize: "22px" }}></span>
                             <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1385,19 +1479,9 @@
                       <div style={{ marginBottom: "10px" }}>
                         <label style={S.label}>Icono</label>
                         <div style={{ position: "relative", display: "inline-block" }}>
-                          <button onClick={() => setShowPickerAdd(v => !v)} style={{ width: "48px", height: "48px", borderRadius: "10px", border: `2px solid ${C.teal}`, background: "#fff", cursor: "pointer", fontSize: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>{newCatalogItem.icon || "⭐"}</button>
-                          {showPickerAdd && (
-                            <div style={{ position: "absolute", top: "54px", left: 0, zIndex: 500, background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", flexWrap: "wrap", gap: "4px", width: "240px" }}>
-                              {["🎓","🤝","💡","✅","⚡","🔧","🏆","🎯","🌟","🔥","💪","📚","🎨","🛠️","📊","🚀","👏","💰","🎁","⭐","🏅","🎖️","📈","🔑"].map(em => (
-                                <button key={em} onClick={() => { setNewCatalogItem(f => ({ ...f, icon: em })); setShowPickerAdd(false); }} style={{ width: "36px", height: "36px", borderRadius: "8px", border: `1.5px solid ${newCatalogItem.icon === em ? C.teal : "transparent"}`, background: newCatalogItem.icon === em ? `${C.teal}15` : "#F9FAFB", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>{em}</button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                         <input style={{ ...S.input, flex: 2, minWidth: "180px" }} placeholder="Nombre del logro..." value={newCatalogItem.label} onChange={e => setNewCatalogItem(f => ({ ...f, label: e.target.value }))} />
-                        <input style={{ ...S.input, width: "90px" }} type="number" placeholder="Pts" min="1" value={newCatalogItem.pts} onChange={e => setNewCatalogItem(f => ({ ...f, pts: e.target.value }))} />
+                        <input style={{ ...S.input, width: "90px" }} type="number" inputMode="numeric" placeholder="Pts" min="1" value={newCatalogItem.pts} onChange={e => setNewCatalogItem(f => ({ ...f, pts: e.target.value }))} />
                         <button style={S.btnPrimary} onClick={handleAddCatalogItem}>Añadir</button>
                       </div>
                     </div>
@@ -1407,7 +1491,7 @@
               {/* ── EMPRESA ── */}
               {view === "empresa" && profile.role === "admin" && (
                 <>
-                  <div style={S.pageTitle}>Configuración de empresa</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Configuración de empresa</div>
                   <div style={S.pageSubtitle}>Personaliza la app con la identidad de tu empresa</div>
                   <div style={{ ...S.card, maxWidth: "560px" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -1505,7 +1589,7 @@
               const avgPtsPerMonth = last6.reduce((a,b) => a+b.pts, 0) / 6;
               return (
                 <>
-                  <div style={S.pageTitle}>Estadísticas</div>
+                  <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Estadísticas</div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "28px" }}>
                     <div style={S.pageSubtitle}>Resumen de actividad de tu equipo</div>
                     <button style={S.btnPrimary} onClick={exportToExcel}>⬇️ Exportar Excel</button>
@@ -1555,7 +1639,7 @@
                           const lv = getLevel(u.totalPts);
                           return (
                             <div key={u.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: i === 0 ? `${color}10` : "#F9FAFB", border: `1px solid ${i === 0 ? color+"30" : C.border}` }}>
-                              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "12px", color: "#fff", flexShrink: 0 }}>{u.name[0]}</div>
+                              <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: "800", fontSize: "12px", color: "#fff", flexShrink: 0 }}>{(() => { const p = u.name?.trim().split(" "); return p && p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : (u.name?.substring(0,2) || "?").toUpperCase(); })()}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: "13px", fontWeight: "700" }}>{u.name} <span style={{ ...S.badge(lv.color, `${lv.color}15`), fontSize: "10px" }}>{lv.icon} {lv.label}</span></div>
                                 <div style={{ fontSize: "11px", color: C.muted }}>{u.totalLogros} logros registrados</div>
@@ -1573,7 +1657,7 @@
                       <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                         {topItems.map(({ cat, count }, i) => cat && (
                           <div key={cat.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: darkMode ? "#0A1628" : "#F9FAFB", border: `1px solid ${C.border}` }}>
-                            <span style={{ fontSize: "22px" }}>{cat.icon}</span>
+                            
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: "13px", fontWeight: "600" }}>{cat.label}</div>
                               <div style={{ height: "4px", borderRadius: "2px", background: `${C.teal}20`, marginTop: "4px", overflow: "hidden" }}>
@@ -1608,7 +1692,7 @@
             {/* ── RETO COLECTIVO ── */}
             {view === "reto" && profile.role === "admin" && (
               <>
-                <div style={S.pageTitle}>Reto Colectivo</div>
+                <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Reto Colectivo</div>
                 <div style={S.pageSubtitle}>Lanza un objetivo compartido para motivar a todo el equipo</div>
                 {challenge ? (
                   <div style={S.card}>
@@ -1663,7 +1747,7 @@
                       <div><label style={S.label}>Título del reto *</label><input style={S.input} placeholder="Ej: ¡Llegamos a 300 puntos este mes!" value={challengeForm.title} onChange={e => setChallengeForm(f => ({ ...f, title: e.target.value }))} /></div>
                       <div><label style={S.label}>Descripción (opcional)</label><input style={S.input} placeholder="Explica el reto al equipo..." value={challengeForm.description} onChange={e => setChallengeForm(f => ({ ...f, description: e.target.value }))} /></div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                        <div><label style={S.label}>Objetivo (puntos) *</label><input style={S.input} type="number" min="1" placeholder="Ej: 300" value={challengeForm.targetPts} onChange={e => setChallengeForm(f => ({ ...f, targetPts: e.target.value }))} /></div>
+                        <div><label style={S.label}>Objetivo (puntos) *</label><input style={S.input} type="number" inputMode="numeric" min="1" placeholder="Ej: 300" value={challengeForm.targetPts} onChange={e => setChallengeForm(f => ({ ...f, targetPts: e.target.value }))} /></div>
                         <div><label style={S.label}>Fecha límite *</label><input style={S.input} type="date" value={challengeForm.deadline} onChange={e => setChallengeForm(f => ({ ...f, deadline: e.target.value }))} /></div>
                       </div>
                       <div><label style={S.label}>Premio 🎁</label><input style={S.input} placeholder="Ej: Viernes de salida anticipada, Pizza para todos..." value={challengeForm.prize} onChange={e => setChallengeForm(f => ({ ...f, prize: e.target.value }))} /></div>
@@ -1781,22 +1865,9 @@
               <div style={S.modal}>
                 <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "20px" }}>✏️ Editar logro</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div>
-                    <label style={S.label}>Icono</label>
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      <button onClick={() => setShowPickerEdit(v => !v)} style={{ width: "48px", height: "48px", borderRadius: "10px", border: `2px solid ${C.teal}`, background: "#fff", cursor: "pointer", fontSize: "24px", display: "flex", alignItems: "center", justifyContent: "center" }}>{editCatalogItem.icon || "⭐"}</button>
-                      {showPickerEdit && (
-                        <div style={{ position: "absolute", top: "54px", left: 0, zIndex: 500, background: "#fff", border: `1px solid ${C.border}`, borderRadius: "12px", padding: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", display: "flex", flexWrap: "wrap", gap: "4px", width: "240px" }}>
-                          {["🎓","🤝","💡","✅","⚡","🔧","🏆","🎯","🌟","🔥","💪","📚","🎨","🛠️","📊","🚀","👏","💰","🎁","⭐","🏅","🎖️","📈","🔑"].map(em => (
-                            <button key={em} onClick={() => { setEditCatalogItem(i => ({ ...i, icon: em })); setShowPickerEdit(false); }} style={{ width: "36px", height: "36px", borderRadius: "8px", border: `1.5px solid ${editCatalogItem.icon === em ? C.teal : "transparent"}`, background: editCatalogItem.icon === em ? `${C.teal}15` : "#F9FAFB", cursor: "pointer", fontSize: "18px", display: "flex", alignItems: "center", justifyContent: "center" }}>{em}</button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
                   <div style={{ display: "flex", gap: "10px" }}>
                     <div style={{ flex: 1 }}><label style={S.label}>Nombre</label><input style={S.input} value={editCatalogItem.label} onChange={e => setEditCatalogItem(i => ({ ...i, label: e.target.value }))} /></div>
-                    <div style={{ width: "90px" }}><label style={S.label}>Puntos</label><input style={S.input} type="number" min="1" value={editCatalogItem.pts} onChange={e => setEditCatalogItem(i => ({ ...i, pts: e.target.value }))} /></div>
+                    <div style={{ width: "90px" }}><label style={S.label}>Puntos</label><input style={S.input} type="number" inputMode="numeric" min="1" value={editCatalogItem.pts} onChange={e => setEditCatalogItem(i => ({ ...i, pts: e.target.value }))} /></div>
                   </div>
                   <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
                     <button style={S.btnSecondary} onClick={() => setEditCatalogItem(null)}>Cancelar</button>
@@ -1814,7 +1885,7 @@
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div><label style={S.label}>Logro</label>
                     <select style={S.select} value={editRecord.catalog_id} onChange={e => setEditRecord(r => ({ ...r, catalog_id: e.target.value }))}>
-                      {catalog.map(c => <option key={c.id} value={c.id}>{c.icon} {c.label} — {c.pts} pts</option>)}
+                      {catalog.map(c => <option key={c.id} value={c.id}>{c.label} — {c.pts} pts</option>)}
                     </select>
                   </div>
                   <div><label style={S.label}>Descripción</label><input style={S.input} value={editRecord.description} onChange={e => setEditRecord(r => ({ ...r, description: e.target.value }))} /></div>
@@ -1843,6 +1914,25 @@
               </div>
             </div>
           )}
+
+          {/* ── TOASTS ── */}
+          {toasts.map(t => (
+            <div key={t.id} style={{
+              position: "fixed",
+              bottom: isMobile ? "calc(76px + env(safe-area-inset-bottom, 0px))" : "24px",
+              left: "50%", transform: "translateX(-50%)",
+              background: t.type === "success" ? "#D4AF37" : t.type === "error" ? "#EF4444" : "#1E3A5F",
+              color: t.type === "success" ? "#060E1C" : "#fff",
+              padding: "11px 22px", borderRadius: "50px",
+              fontSize: "13px", fontWeight: "700",
+              fontFamily: "'Plus Jakarta Sans', sans-serif",
+              zIndex: 10000, whiteSpace: "nowrap",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.3)",
+              animation: "slideUp 0.3s ease",
+            }}>
+              {t.type === "success" ? "✓  " : t.type === "error" ? "✕  " : "ℹ  "}{t.message}
+            </div>
+          ))}
         </div>
       );
     }
