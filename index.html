@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#D4AF37" />
+  <meta name="theme-color" content="#060E1C" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Meriti" />
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
   <title>Meriti</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
   <style>
@@ -61,13 +63,14 @@
     const SUPABASE_URL = "https://zuuintnjucfptemiqnoa.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1dWludG5qdWNmcHRlbWlxbm9hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU3Nzc1NjIsImV4cCI6MjEwMTM1MzU2Mn0.p5pxg9b6Ll4DXPEUDxfa-w2Etz-s-otI6R7BYKYupVo";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.info("Meriti build 2026-10-29 · verificada");
     const DEFAULT_CATALOG = [
-      { label: "Curso publicado en fecha", pts: 10, icon: "🎓" },
-      { label: "Colaboración con otro departamento", pts: 4, icon: "🤝" },
-      { label: "Propuesta de mejora", pts: 5, icon: "💡" },
-      { label: "Control de Calidad", pts: 1, icon: "✅" },
-      { label: "Entrega antes de tiempo", pts: 3, icon: "⚡" },
-      { label: "Resolución de incidencia", pts: 1, icon: "🔧" },
+      { label: "Curso publicado en fecha", pts: 10, icon: "" },
+      { label: "Colaboración con otro departamento", pts: 4, icon: "" },
+      { label: "Propuesta de mejora", pts: 5, icon: "" },
+      { label: "Control de Calidad", pts: 1, icon: "" },
+      { label: "Entrega antes de tiempo", pts: 3, icon: "" },
+      { label: "Resolución de incidencia", pts: 1, icon: "" },
     ];
     // BRAND_COLORS set dynamically after company loads
     const LEVELS = [
@@ -299,6 +302,7 @@
         await supabase.from("likes").insert({ from_user_id: session.user.id, to_user_id: toUserId, date: today, company_id: companyId });
         await supabase.from("notifications").insert({ user_id: toUserId, message: `👏 ${profile.name} te ha dado un aplauso`, read: false, company_id: companyId });
         await loadLikes();
+        showToast("¡Aplauso enviado!");
       }
       async function handleSaveChallenge() {
         if (!challengeForm.title.trim() || !challengeForm.targetPts || !challengeForm.deadline) { setChallengeMsg("⚠️ Completa título, objetivo y fecha límite."); return; }
@@ -307,6 +311,7 @@
         setChallengeForm({ title: "", description: "", targetPts: "", prize: "", deadline: "" });
         setShowChallengeForm(false);
         await loadChallenge();
+        showToast("Reto lanzado");
       }
       async function handleCloseChallenge() {
         if (!challenge) return;
@@ -370,10 +375,10 @@
       }
       async function handleEditCatalogItem() {
         if (!editCatalogItem?.label.trim() || !editCatalogItem?.pts) return;
-        const { error } = await supabase.from("catalog_items").update({ label: editCatalogItem.label.trim(), pts: parseInt(editCatalogItem.pts), icon: editCatalogItem.icon }).eq("id", editCatalogItem.id);
-        if (error) { showToast("Acción completada"); return; }
+        const { error } = await supabase.from("catalog_items").update({ label: editCatalogItem.label.trim(), pts: parseInt(editCatalogItem.pts) }).eq("id", editCatalogItem.id);
+        if (error) { showToast("No se pudo guardar. Inténtalo de nuevo.", "error"); return; }
         setEditCatalogItem(null);
-        setShowPickerEdit(false);
+        showToast("Catálogo actualizado");
         await loadCatalog();
       }
       async function handleValidateWithComment(id) {
@@ -386,6 +391,7 @@
         }
         setValidationComment(vc => { const n = {...vc}; delete n[id]; return n; });
         await loadRecords();
+        showToast("Logro validado");
       }
       async function markAllRead() {
         await supabase.from("notifications").update({ read: true }).eq("user_id", session.user.id).eq("read", false);
@@ -420,6 +426,7 @@
         await supabase.from("company_settings").update(payload).eq("id", profile.company_id);
         await loadCompany();
         setCompanyMsg("✅ Cambios guardados.");
+        showToast("Cambios guardados");
         setTimeout(() => setCompanyMsg(""), 3000);
       }
       function handleLogoUpload(e) {
@@ -447,20 +454,20 @@
       // ── CATALOG ───────────────────────────────────────────────────────────
       async function handleAddCatalogItem() {
         if (!newCatalogItem.label.trim() || !newCatalogItem.pts) return;
-        await supabase.from("catalog_items").insert({ label: newCatalogItem.label.trim(), pts: parseInt(newCatalogItem.pts), icon: newCatalogItem.icon || "⭐", company_id: companyId });
-        setNewCatalogItem({ label: "", pts: "", icon: "⭐" }); await loadCatalog();
+        await supabase.from("catalog_items").insert({ label: newCatalogItem.label.trim(), pts: parseInt(newCatalogItem.pts), icon: "", company_id: companyId });
+        setNewCatalogItem({ label: "", pts: "" }); await loadCatalog(); showToast("Logro añadido al catálogo");
       }
       async function handleDeleteCatalogItem(id) {
-        await supabase.from("catalog_items").delete().eq("id", id); await loadCatalog();
+        await supabase.from("catalog_items").delete().eq("id", id); await loadCatalog(); showToast("Logro eliminado del catálogo");
       }
       // ── PRIZES ────────────────────────────────────────────────────────────
       async function handleAddPrize() {
         if (!newPrize.trim()) return;
         await supabase.from("prizes").insert({ label: newPrize.trim(), company_id: companyId });
-        setNewPrize(""); await loadPrizes();
+        setNewPrize(""); await loadPrizes(); showToast("Premio añadido");
       }
       async function handleDeletePrize(id) {
-        await supabase.from("prizes").delete().eq("id", id); await loadPrizes();
+        await supabase.from("prizes").delete().eq("id", id); await loadPrizes(); showToast("Premio eliminado");
       }
       // ── RECORDS ───────────────────────────────────────────────────────────
       async function handleSubmit() {
@@ -471,7 +478,8 @@
         if (error) { setFormMsg("❌ Error: " + error.message); return; }
         await loadRecords();
         setForm({ catalogId: "", date: new Date().toISOString().split("T")[0], desc: "", deptId: "" });
-        setFormMsg("✅ Logro enviado. Amanda lo validará pronto.");
+        setFormMsg("✅ Logro enviado. Tu manager lo validará pronto.");
+        showToast("Logro enviado");
         setTimeout(() => setFormMsg(""), 5000);
       }
       async function handleValidate(id) {
@@ -479,8 +487,9 @@
         const rec = records.find(r => r.id === id);
         if (rec) await supabase.from("notifications").insert({ user_id: rec.user_id, message: `✅ Tu logro "${rec.description}" ha sido validado — +${rec.pts} pts`, read: false });
         await loadRecords();
+        showToast("Logro validado");
       }
-      async function handleDelete(id) { await supabase.from("records").delete().eq("id", id); await loadRecords(); }
+      async function handleDelete(id) { await supabase.from("records").delete().eq("id", id); await loadRecords(); showToast("Logro eliminado"); }
       async function handleSaveEdit() {
         const cat = catalog.find(c => c.id === editRecord.catalog_id);
         await supabase.from("records").update({ catalog_id: editRecord.catalog_id, pts: cat ? cat.pts : editRecord.pts, description: editRecord.description, date: editRecord.date }).eq("id", editRecord.id);
@@ -492,7 +501,7 @@
         const mRecs = records.filter(r => r.month === monthKey && r.validated);
         const scores = profiles.filter(p => p.role === "user").map(p => ({ name: p.name, pts: mRecs.filter(r => r.user_id === p.id).reduce((a, b) => a + b.pts, 0) })).sort((a, b) => b.pts - a.pts);
         await supabase.from("month_history").insert({ month: monthKey, label: `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`, winner: scores[0]?.name || "—", scores, company_id: companyId });
-        await loadHistory(); setClosingMonth(false); setView("dashboard");
+        await loadHistory(); setClosingMonth(false); setView("dashboard"); showToast("Mes cerrado y guardado");
       }
       // ── ROULETTE ──────────────────────────────────────────────────────────
       function handleSpin() {
@@ -699,7 +708,6 @@
           </aside>}
           {/* MAIN */}
           <div style={{ ...S.mainContent, marginLeft: isMobile ? "0" : "240px" }}>
-            }
           {/* MOBILE BOTTOM NAV */}
           {isMobile && (
             <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: C.card, borderTop: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "8px 0 10px", zIndex: 100, boxShadow: "0 -2px 20px rgba(0,0,0,0.15)" }}>
@@ -933,7 +941,7 @@
                             return (
                               <tr key={r.id}>
                                 <td style={S.td}><span style={{ fontWeight: "700", color }}>{r.user_name}</span></td>
-                                <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                                <td style={S.td}>{cat?.label}</td>
                                 <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
                                 <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
                                 <td style={S.td}>{r.validated ? <span style={S.badge("#059669","#D1FAE5")}>✓ Validado</span> : <span style={S.badge("#D97706","#FEF3C7")}>⏳ Pendiente</span>}</td>
@@ -949,7 +957,6 @@
               {/* ── REGISTRAR ── */}
               {view === "registrar" && profile.role !== "admin" && (
                 <div style={{ maxWidth: isMobile ? "100%" : "480px" }}>
-                  <>
                   {/* Header */}
                   {isMobile ? (
                     <div style={{ background: `linear-gradient(180deg, ${C.card} 0%, ${C.bg} 100%)`, padding: "16px 16px 14px", marginBottom: "4px" }}>
@@ -962,7 +969,6 @@
                       <div style={S.pageSubtitle}>Registra lo que has conseguido hoy</div>
                     </div>
                   )}
-
                   {/* Catalog pills */}
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: isMobile ? "0 13px" : "0", marginBottom: "12px" }}>
                     {catalog.map(c => {
@@ -977,10 +983,7 @@
                             border: selected ? `1.5px solid ${C.teal}60` : `1px solid ${darkMode ? "rgba(255,255,255,0.07)" : C.border}`,
                             transition: "all 0.15s ease",
                           }}>
-                          <div style={{ fontSize: "13px", fontWeight: selected ? "700" : "600", color: selected ? C.text : C.muted }}>
-                            {c.label}
-                          </div>
-                          {/* Pts circle — gold if selected, grey if not */}
+                          <div style={{ fontSize: "13px", fontWeight: selected ? "700" : "600", color: selected ? C.text : C.muted }}>{c.label}</div>
                           <div style={{
                             width: "42px", height: "42px", borderRadius: "50%", flexShrink: 0,
                             background: selected ? `linear-gradient(135deg, ${C.green}, ${C.teal})` : (darkMode ? "rgba(255,255,255,0.08)" : "#E5E7EB"),
@@ -995,15 +998,13 @@
                       );
                     })}
                   </div>
-
                   {/* Description */}
                   <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
                     <input style={{ ...S.input, borderRadius: "50px", padding: "12px 18px" }}
-                      type="text" placeholder="Describe tu logro..."
+                      type="text" placeholder="Describe tu logro (obligatorio)"
                       value={form.desc} onChange={e => setForm(f => ({ ...f, desc: e.target.value }))} />
                   </div>
-
-                  {/* Dept selector — only if multiple depts */}
+                  {/* Dept selector */}
                   {departments.length > 0 && (
                     <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
                       <select style={{ ...S.select, borderRadius: "50px", padding: "12px 18px" }}
@@ -1013,27 +1014,11 @@
                       </select>
                     </div>
                   )}
-
-                  {/* Reto contribution */}
-                  {challenge && form.catalogId && (
-                    <div style={{ padding: isMobile ? "0 13px" : "0", marginBottom: "10px" }}>
-                      <div style={{ background: `${C.teal}08`, border: `1px solid ${C.teal}20`, borderRadius: "14px", padding: "12px 14px" }}>
-                        <div style={{ fontSize: "10px", fontWeight: "700", color: C.teal, marginBottom: "6px", letterSpacing: "0.5px" }}>Reto activo · {challenge.unit_type || "pts"}</div>
-                        <div style={{ fontSize: "11px", color: C.muted, marginBottom: "8px" }}>{challenge.title}</div>
-                        <input style={{ ...S.input, borderRadius: "50px", padding: "9px 14px" }}
-                          type="number" inputMode="numeric" min="0"
-                          placeholder={`¿Cuánto has aportado al reto? (${challenge.unit_type || "pts"})`}
-                          value={form.retoContribution || ""}
-                          onChange={e => setForm(f => ({ ...f, retoContribution: e.target.value }))} />
-                      </div>
-                    </div>
-                  )}
-
+                  {/* Error/success message */}
                   {formMsg && (
                     <div style={{ margin: isMobile ? "0 13px 10px" : "0 0 10px", fontSize: "13px", padding: "10px 14px", borderRadius: "10px", background: formMsg.startsWith("✅") ? "#D1FAE5" : "#FEF3C7", color: formMsg.startsWith("✅") ? "#065F46" : "#92400E" }}>{formMsg}</div>
                   )}
-
-                  {
+                  {/* CTA */}
                   <div style={{ padding: isMobile ? "0 13px" : "0" }}>
                     <div onClick={form.catalogId ? handleSubmit : undefined}
                       style={{
@@ -1053,7 +1038,6 @@
                       <div style={{ fontSize: "13px", fontWeight: "800", color: form.catalogId ? "#060E1C" : C.muted }}>Enviar →</div>
                     </div>
                   </div>
-                  </>
                 </div>
               )}
               {/* ── PERFIL ── */}
@@ -1131,7 +1115,7 @@
                           {topItems.map(({ cat, count }) => cat && (
                             <div key={cat.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0A1628" : "#F9FAFB", border: `1px solid ${C.border}` }}>
                               <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                                <span style={{ fontSize: "20px" }}>{cat.icon}</span>
+                                
                                 <span style={{ fontWeight: "600", fontSize: "14px" }}>{cat.label}</span>
                               </div>
                               <span style={S.badge(color, `${color}15`)}>{count}x</span>
@@ -1153,7 +1137,7 @@
                               const cat = catalog.find(c => c.id === r.catalog_id);
                               return (
                                 <tr key={r.id}>
-                                  <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                                  <td style={S.td}>{cat?.label}</td>
                                   <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
                                   <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
                                   <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
@@ -1189,7 +1173,7 @@
                           return (
                             <tr key={r.id}>
                               {profile.role === "admin" && <td style={{ ...S.td, fontWeight: "700", color }}>{r.user_name}</td>}
-                              <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                              <td style={S.td}>{cat?.label}</td>
                               <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
                               <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
                               <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
@@ -1324,7 +1308,7 @@
                           return (
                             <tr key={r.id}>
                               <td style={{ ...S.td, fontWeight: "700", color }}>{r.user_name}</td>
-                              <td style={S.td}>{cat?.icon} {cat?.label}</td>
+                              <td style={S.td}>{cat?.label}</td>
                               <td style={{ ...S.td, color: C.muted }}>{r.description}</td>
                               <td style={{ ...S.td, color: C.muted }}>{r.date}</td>
                               <td style={{ ...S.td, fontWeight: "700", color }}>{r.pts} pts</td>
@@ -1463,8 +1447,7 @@
                     <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
                       {catalog.map(item => (
                         <div key={item.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderRadius: "10px", background: darkMode ? "#0A1628" : "#F9FAFB", border: `1px solid ${C.border}` }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                            <span style={{ fontSize: "22px" }}></span>
+                          <div style={{ display: "flex", alignItems: "center" }}>
                             <span style={{ fontSize: "14px", fontWeight: "600" }}>{item.label}</span>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
@@ -1477,10 +1460,7 @@
                     </div>
                     <div style={{ padding: "16px", borderRadius: "10px", background: darkMode ? "#0A1628" : "#F9FAFB", border: `1px dashed ${C.border}` }}>
                       <div style={{ ...S.sectionLabel, marginBottom: "14px" }}>Añadir nuevo item</div>
-                      <div style={{ marginBottom: "10px" }}>
-                        <label style={S.label}>Icono</label>
-                        <div style={{ position: "relative", display: "inline-block" }}>
-                          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                         <input style={{ ...S.input, flex: 2, minWidth: "180px" }} placeholder="Nombre del logro..." value={newCatalogItem.label} onChange={e => setNewCatalogItem(f => ({ ...f, label: e.target.value }))} />
                         <input style={{ ...S.input, width: "90px" }} type="number" inputMode="numeric" placeholder="Pts" min="1" value={newCatalogItem.pts} onChange={e => setNewCatalogItem(f => ({ ...f, pts: e.target.value }))} />
                         <button style={S.btnPrimary} onClick={handleAddCatalogItem}>Añadir</button>
