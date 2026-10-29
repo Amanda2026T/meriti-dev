@@ -949,17 +949,17 @@
               {/* ── REGISTRAR ── */}
               {view === "registrar" && profile.role !== "admin" && (
                 <div style={{ maxWidth: isMobile ? "100%" : "480px" }}>
+                  <>
                   {/* Header */}
-                  {!isMobile && (
+                  {isMobile ? (
+                    <div style={{ background: `linear-gradient(180deg, ${C.card} 0%, ${C.bg} 100%)`, padding: "16px 16px 14px", marginBottom: "4px" }}>
+                      <div style={{ fontSize: "9px", fontWeight: "700", letterSpacing: "2px", color: `${C.teal}99`, textTransform: "uppercase", marginBottom: "5px" }}>Nuevo logro</div>
+                      <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", color: C.text, lineHeight: 1.15 }}>¿Qué has conseguido hoy?</div>
+                    </div>
+                  ) : (
                     <div style={{ marginBottom: "24px" }}>
                       <div style={{ ...S.pageTitle, fontFamily: "'DM Serif Display', serif", fontWeight: "400" }}>Nuevo logro</div>
                       <div style={S.pageSubtitle}>Registra lo que has conseguido hoy</div>
-                    </div>
-                  )}
-                  {isMobile && (
-                    <div style={{ background: `linear-gradient(180deg, ${C.card} 0%, ${C.bg} 100%)`, padding: "16px 16px 14px", marginBottom: "4px" }}>
-                      <div style={{ fontSize: "9px", fontWeight: "700", letterSpacing: "2px", color: `${C.teal}99`, textTransform: "uppercase", marginBottom: "5px" }}>Nuevo logro</div>
-                      <div style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", color: C.text, lineHeight: 1.15 }}>¿Qué has<br/>conseguido hoy?</div>
                     </div>
                   )}
 
@@ -1053,6 +1053,7 @@
                       <div style={{ fontSize: "13px", fontWeight: "800", color: form.catalogId ? "#060E1C" : C.muted }}>Enviar →</div>
                     </div>
                   </div>
+                  </>
                 </div>
               )}
               {/* ── PERFIL ── */}
